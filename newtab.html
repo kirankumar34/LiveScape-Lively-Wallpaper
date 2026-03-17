@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LiveScape Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Orbitron:wght@400;500;600;700;800;900&family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/widgets.css" />
+</head>
+
+<body>
+
+  <div id="app">
+    
+  <!-- ════════════════════════════════════════════
+       WALLPAPER LAYER
+  ════════════════════════════════════════════ -->
+  <div id="wallpaper-layer">
+    <canvas id="particles-canvas"></canvas>
+    <canvas id="webgl-canvas"></canvas>
+    <video id="video-wallpaper" autoplay muted loop playsinline preload="metadata"></video>
+    <img id="gif-wallpaper" alt="Wallpaper" />
+    <div id="static-wallpaper"></div>
+    <div id="overlay-blur"></div>
+    <div id="overlay-dim"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       AMBIENT PARTICLES LAYER
+  ════════════════════════════════════════════ -->
+  <canvas id="ambient-canvas"></canvas>
+  </div> <!-- end wallpaper-layer -->
+
+  <!-- ════════════════════════════════════════════
+       MAIN DASHBOARD / WIDGETS
+  ════════════════════════════════════════════ -->
+  <div id="widget-layer">
+
+    <!-- Clock Widget -->
+    <div id="widget-clock" class="widget widget-clock" data-widget="clock">
+      <div class="widget-drag-handle"></div>
+      <div class="clock-display">
+        <div id="clock-time" class="clock-time"></div>
+        <div id="clock-date" class="clock-date"></div>
+        <div id="clock-greeting" class="clock-greeting"></div>
+      </div>
+      <canvas id="analog-clock" class="analog-clock" width="180" height="180"></canvas>
+    </div>
+
+    <!-- Search Widget -->
+    <div id="widget-search" class="widget widget-search" data-widget="search">
+      <div class="widget-drag-handle"></div>
+      <div class="search-container">
+        <div class="search-engine-switcher">
+          <button class="engine-btn active" data-engine="google" title="Google">G</button>
+          <button class="engine-btn" data-engine="bing" title="Bing">B</button>
+          <button class="engine-btn" data-engine="duckduckgo" title="DuckDuckGo">D</button>
+        </div>
+        <div class="search-input-wrapper">
+          <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </span>
+          <input type="text" id="search-input" class="search-input" placeholder="Search the web..." autocomplete="off"
+            spellcheck="false" />
+          <button id="search-btn" class="search-submit-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+        <div id="search-suggestions" class="search-suggestions hidden"></div>
+      </div>
+    </div>
+
+    <!-- Weather Widget -->
+    <div id="widget-weather" class="widget widget-weather" data-widget="weather">
+      <div class="widget-drag-handle"></div>
+      <div class="weather-loading" id="weather-loading">
+        <div class="loading-spinner"></div>
+        <span>Fetching weather...</span>
+      </div>
+      <div class="weather-content hidden" id="weather-content">
+        <div class="weather-main">
+          <div class="weather-icon-wrap" id="weather-icon-wrap"></div>
+          <div class="weather-info">
+            <div class="weather-temp" id="weather-temp">--°</div>
+            <div class="weather-desc" id="weather-desc">--</div>
+            <div class="weather-location" id="weather-location">--</div>
+          </div>
+        </div>
+        <div class="weather-details">
+          <div class="weather-detail-item">
+            <span class="detail-icon">💧</span>
+            <span id="weather-humidity">--%</span>
+            <span class="detail-label">Humidity</span>
+          </div>
+          <div class="weather-detail-item">
+            <span class="detail-icon">💨</span>
+            <span id="weather-wind">-- km/h</span>
+            <span class="detail-label">Wind</span>
+          </div>
+          <div class="weather-detail-item">
+            <span class="detail-icon">👁️</span>
+            <span id="weather-visibility">-- km</span>
+            <span class="detail-label">Visibility</span>
+          </div>
+        </div>
+        <div class="weather-forecast" id="weather-forecast"></div>
+      </div>
+      <div class="weather-error hidden" id="weather-error">
+        <span>⚠️ Set API key in settings</span>
+      </div>
+    </div>
+
+    <!-- Quote Widget -->
+    <div id="widget-quote" class="widget widget-quote" data-widget="quote">
+      <div class="widget-drag-handle"></div>
+      <div class="quote-content">
+        <div class="quote-mark">"</div>
+        <p id="quote-text" class="quote-text">Loading inspiration...</p>
+        <cite id="quote-author" class="quote-author">— Author</cite>
+        <button id="quote-refresh" class="quote-refresh-btn" title="New Quote">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6" />
+            <path d="M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- To-Do Widget -->
+    <div id="widget-todo" class="widget widget-todo" data-widget="todo">
+      <div class="widget-drag-handle"></div>
+      <div class="todo-header">
+        <h3 class="widget-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          Tasks
+        </h3>
+        <span class="todo-count" id="todo-count">0</span>
+      </div>
+      <div class="todo-input-row">
+        <input type="text" id="todo-input" class="todo-input" placeholder="Add a new task..." maxlength="100" />
+        <button id="todo-add-btn" class="todo-add-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+      <ul id="todo-list" class="todo-list"></ul>
+      <div class="todo-footer">
+        <button id="todo-clear-btn" class="todo-clear-btn">Clear done</button>
+      </div>
+    </div>
+
+    <!-- Notes Widget -->
+    <div id="widget-notes" class="widget widget-notes" data-widget="notes">
+      <div class="widget-drag-handle"></div>
+      <div class="notes-header">
+        <h3 class="widget-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          Quick Notes
+        </h3>
+        <span class="notes-save-indicator" id="notes-save-indicator">Saved</span>
+      </div>
+      <textarea id="notes-textarea" class="notes-textarea" placeholder="Start typing your notes here...
+Use this space for quick thoughts, ideas, or anything you want to remember..."></textarea>
+    </div>
+
+    <!-- Bookmarks Widget -->
+    <div id="widget-bookmarks" class="widget widget-bookmarks" data-widget="bookmarks">
+      <div class="widget-drag-handle"></div>
+      <h3 class="widget-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+        </svg>
+        Quick Access
+      </h3>
+      <div class="bookmarks-grid" id="bookmarks-grid"></div>
+      <button class="bookmark-add-btn" id="bookmark-add-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Add Bookmark
+      </button>
+    </div>
+
+  </div><!-- end #widget-layer -->
+
+  <!-- ════════════════════════════════════════════
+       OVERLAY UI LAYER
+  ════════════════════════════════════════════ -->
+  <div id="overlay-layer">
+
+  <!-- ════════════════════════════════════════════
+       TOOLBAR (bottom bar)
+  ════════════════════════════════════════════ -->
+  <div id="toolbar" class="toolbar">
+    <div class="toolbar-left">
+      <button class="toolbar-btn" id="btn-focus-mode" title="Focus Mode (F)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" />
+        </svg>
+        <span>Focus</span>
+      </button>
+      <button class="toolbar-btn" id="btn-next-wallpaper" title="Next Wallpaper (→)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+        <span>Next</span>
+      </button>
+      <button class="toolbar-btn" id="btn-shuffle" title="Shuffle Wallpaper">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 3 21 3 21 8" />
+          <line x1="4" y1="20" x2="21" y2="3" />
+          <polyline points="21 16 21 21 16 21" />
+          <line x1="15" y1="15" x2="21" y2="21" />
+        </svg>
+        <span>Shuffle</span>
+      </button>
+    </div>
+    <div class="toolbar-center">
+      <div class="wallpaper-indicator" id="wallpaper-indicator">
+        <span id="wallpaper-name">Canvas Particles</span>
+        <span class="wallpaper-category" id="wallpaper-category">Abstract</span>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button class="toolbar-btn" id="btn-gallery" title="Wallpaper Gallery (G)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+        <span>Gallery</span>
+      </button>
+      <button class="toolbar-btn" id="btn-widgets" title="Widgets">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+        </svg>
+        <span>Widgets</span>
+      </button>
+      <button class="toolbar-btn toolbar-btn-primary" id="btn-settings" title="Settings (S)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+        </svg>
+        <span>Settings</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       WALLPAPER GALLERY PANEL
+  ════════════════════════════════════════════ -->
+  <div id="gallery-panel" class="glass-panel gallery-panel hidden">
+    <div class="panel-header">
+      <h2 class="panel-title">🖼️ Wallpaper Gallery</h2>
+      <div class="panel-tabs">
+        <button class="tab-btn active" data-tab="all">All</button>
+        <button class="tab-btn" data-tab="nature">Nature</button>
+        <button class="tab-btn" data-tab="space">Space</button>
+        <button class="tab-btn" data-tab="abstract">Abstract</button>
+        <button class="tab-btn" data-tab="cyberpunk">Cyberpunk</button>
+        <button class="tab-btn" data-tab="minimal">Minimal</button>
+        <button class="tab-btn" data-tab="custom">My Uploads</button>
+      </div>
+      <button class="panel-close-btn" id="gallery-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="gallery-upload-zone" id="gallery-upload-zone">
+      <div class="upload-zone-content">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        <p>Drop video, GIF, or image here</p>
+        <span>or</span>
+        <label class="upload-btn" for="upload-file-input">Browse Files</label>
+        <input type="file" id="upload-file-input"
+          accept="video/mp4,video/webm,image/gif,image/jpeg,image/png,image/webp" class="hidden" />
+      </div>
+    </div>
+    <div class="gallery-grid" id="gallery-grid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SETTINGS PANEL
+  ════════════════════════════════════════════ -->
+  <div id="settings-panel" class="glass-panel settings-panel hidden">
+    <div class="panel-header">
+      <h2 class="panel-title">⚙️ LiveScape Settings</h2>
+      <button class="panel-close-btn" id="settings-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="settings-content">
+
+      <!-- Section: Appearance -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">🎨 Appearance</h3>
+        <div class="settings-row">
+          <label class="settings-label">Blur Overlay</label>
+          <div class="slider-container">
+            <input type="range" id="blur-slider" class="slider" min="0" max="20" value="0" step="0.5" />
+            <span class="slider-value" id="blur-value">0px</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Dim Overlay</label>
+          <div class="slider-container">
+            <input type="range" id="dim-slider" class="slider" min="0" max="80" value="20" step="1" />
+            <span class="slider-value" id="dim-value">20%</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">UI Theme</label>
+          <div class="theme-selector">
+            <button class="theme-btn active" data-theme="dark" title="Dark">
+              <span class="theme-preview theme-dark"></span>Dark
+            </button>
+            <button class="theme-btn" data-theme="light" title="Light">
+              <span class="theme-preview theme-light"></span>Light
+            </button>
+            <button class="theme-btn" data-theme="aurora" title="Aurora">
+              <span class="theme-preview theme-aurora"></span>Aurora
+            </button>
+            <button class="theme-btn" data-theme="neon" title="Neon">
+              <span class="theme-preview theme-neon"></span>Neon
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Wallpaper -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">🖼️ Wallpaper</h3>
+        <div class="settings-row">
+          <label class="settings-label">Auto Rotation</label>
+          <div class="settings-row-right">
+            <label class="toggle-switch">
+              <input type="checkbox" id="auto-rotation-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="settings-row" id="rotation-interval-row">
+          <label class="settings-label">Rotation Interval</label>
+          <select id="rotation-interval" class="settings-select">
+            <option value="300000">5 minutes</option>
+            <option value="600000">10 minutes</option>
+            <option value="1800000">30 minutes</option>
+            <option value="3600000">1 hour</option>
+            <option value="86400000">Daily</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Parallax Effect</label>
+          <div class="settings-row-right">
+            <label class="toggle-switch">
+              <input type="checkbox" id="parallax-toggle" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Wallpaper Fit Mode</label>
+          <select id="fit-mode" class="settings-select">
+            <option value="cover">Cover (Fill Screen)</option>
+            <option value="contain">Contain (Fit Screen)</option>
+            <option value="fill">Stretch (Fill)</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Particle Effects</label>
+          <div class="settings-row-right">
+            <label class="toggle-switch">
+              <input type="checkbox" id="particles-toggle" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Performance -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">⚡ Performance</h3>
+        <div class="settings-row">
+          <label class="settings-label">Device Tier</label>
+          <span id="device-tier-label" class="settings-label" style="text-align:right;color:var(--clr-accent)">Auto</span>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Live FPS</label>
+          <span class="fps-display" id="fps-display">-- FPS</span>
+        </div>
+        <div class="settings-row settings-col">
+          <label class="settings-label">Performance Mode</label>
+          <div class="perf-mode-selector">
+            <button class="perf-mode-btn" data-mode="auto">
+              <span class="perf-mode-icon">🔄</span>
+              <span class="perf-mode-label">Auto</span>
+              <span class="perf-mode-desc">Detect device</span>
+            </button>
+            <button class="perf-mode-btn" data-mode="low">
+              <span class="perf-mode-icon">🔋</span>
+              <span class="perf-mode-label">Low Power</span>
+              <span class="perf-mode-desc">24 FPS, static</span>
+            </button>
+            <button class="perf-mode-btn" data-mode="medium">
+              <span class="perf-mode-icon">⚖️</span>
+              <span class="perf-mode-label">Balanced</span>
+              <span class="perf-mode-desc">30 FPS, smooth</span>
+            </button>
+            <button class="perf-mode-btn" data-mode="high">
+              <span class="perf-mode-icon">🚀</span>
+              <span class="perf-mode-label">High Quality</span>
+              <span class="perf-mode-desc">60 FPS, WebGL</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Widgets -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">📦 Widgets</h3>
+        <div class="widget-toggles" id="widget-toggles">
+          <div class="settings-row">
+            <label class="settings-label">🕐 Clock</label>
+            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="clock"
+                checked /><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">🔎 Search</label>
+            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="search"
+                checked /><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">🌤️ Weather</label>
+            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="weather"
+                checked /><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">💬 Quote</label>
+            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="quote"
+                checked /><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">✅ Tasks</label>
+            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="todo" checked /><span
+                class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">📝 Notes</label>
+            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="notes"
+                checked /><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">🔖 Bookmarks</label>
+            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="bookmarks"
+                checked /><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Clock Style</label>
+          <select id="clock-style-select" class="settings-select">
+            <option value="digital">Digital</option>
+            <option value="analog">Analog</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">24-Hour Format</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="clock-24h-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Temperature Unit</label>
+          <div class="unit-selector">
+            <button class="unit-btn active" data-unit="C">°C</button>
+            <button class="unit-btn" data-unit="F">°F</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: API Keys -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">🔑 API Keys</h3>
+        <div class="settings-row settings-col">
+          <label class="settings-label">OpenWeatherMap API Key</label>
+          <div class="api-input-row">
+            <input type="password" id="weather-api-key" class="settings-input"
+              placeholder="Enter your free API key..." />
+            <button id="save-api-key" class="settings-btn">Save</button>
+          </div>
+          <a href="https://openweathermap.org/api" target="_blank" class="settings-link">Get free API key →</a>
+        </div>
+      </div>
+
+      <!-- Section: Performance -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">⚡ Performance</h3>
+        <div class="settings-row">
+          <label class="settings-label">Performance Mode</label>
+          <div class="perf-mode-selector" id="perf-mode-selector">
+            <button class="perf-mode-btn" data-mode="ultra" title="Ultra – Full animations, 60 FPS">
+              <span class="perf-mode-icon">🚀</span>
+              <span class="perf-mode-label">Ultra</span>
+              <span class="perf-mode-desc">60 FPS · All effects</span>
+            </button>
+            <button class="perf-mode-btn active" data-mode="balanced" title="Balanced – 30 FPS">
+              <span class="perf-mode-icon">⚖️</span>
+              <span class="perf-mode-label">Balanced</span>
+              <span class="perf-mode-desc">30 FPS · Smart quality</span>
+            </button>
+            <button class="perf-mode-btn" data-mode="battery" title="Battery Saver – 20 FPS, no 3D">
+              <span class="perf-mode-icon">🔋</span>
+              <span class="perf-mode-label">Battery</span>
+              <span class="perf-mode-desc">20 FPS · No 3D/Shaders</span>
+            </button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Pause When Hidden</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="pause-hidden-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">FPS Monitor</label>
+          <div class="fps-display" id="fps-display">-- FPS</div>
+        </div>
+      </div>
+
+      <!-- Section: AI Wallpaper Keys -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">🤖 AI Wallpaper</h3>
+        <div class="settings-row">
+          <label class="settings-label">AI Provider</label>
+          <select id="ai-provider-select" class="settings-select">
+            <option value="pollinations">Pollinations.ai (Free)</option>
+            <option value="openai">OpenAI DALL-E 3</option>
+            <option value="stability">Stability AI</option>
+          </select>
+        </div>
+        <div class="settings-row settings-col" id="ai-key-row">
+          <label class="settings-label">API Key</label>
+          <div class="api-input-row">
+            <input type="password" id="ai-api-key" class="settings-input" placeholder="Not required for Pollinations" />
+            <button id="save-ai-key" class="settings-btn">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Data -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">💾 Data</h3>
+        <div class="settings-row">
+          <button class="settings-btn settings-btn-danger" id="reset-layout-btn">Reset Widget Layout</button>
+          <button class="settings-btn" id="export-settings-btn">Export Settings</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       AI WALLPAPER PANEL
+  ════════════════════════════════════════════ -->
+  <div id="ai-panel" class="glass-panel ai-panel hidden">
+    <div class="panel-header">
+      <h2 class="panel-title">🤖 AI Wallpaper Generator</h2>
+      <button class="panel-close-btn" id="ai-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="ai-content">
+      <!-- Prompt Input -->
+      <div class="ai-prompt-section">
+        <label class="ai-prompt-label">✨ Describe your wallpaper</label>
+        <div class="ai-prompt-wrapper">
+          <textarea id="ai-prompt-input" class="ai-prompt-input"
+            placeholder="e.g. cyberpunk city at night with neon reflections, 4K..." rows="3" maxlength="500"></textarea>
+          <div class="ai-prompt-chars"><span id="ai-char-count">0</span>/500</div>
+        </div>
+
+        <!-- Quick Suggestions -->
+        <div class="ai-suggestions" id="ai-suggestions">
+          <span class="ai-suggestions-label">Try:</span>
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Generate Button -->
+      <button id="ai-generate-btn" class="ai-generate-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+        Generate Wallpaper
+      </button>
+
+      <!-- Loading State -->
+      <div id="ai-loading" class="ai-loading hidden">
+        <div class="ai-loading-spinner"></div>
+        <div class="ai-loading-text">
+          <span id="ai-loading-msg">Generating your wallpaper…</span>
+          <span class="ai-loading-sub">This may take 5–15 seconds</span>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="ai-error" class="ai-error hidden">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span id="ai-error-msg">An error occurred</span>
+      </div>
+
+      <!-- Preview -->
+      <div id="ai-preview-section" class="ai-preview-section hidden">
+        <div class="ai-preview-wrapper">
+          <img id="ai-preview-img" class="ai-preview-img" alt="Generated wallpaper" />
+          <div class="ai-preview-overlay">
+            <span id="ai-preview-prompt" class="ai-preview-prompt"></span>
+          </div>
+        </div>
+        <div class="ai-preview-actions">
+          <button id="ai-set-wallpaper-btn" class="settings-btn">
+            🖼️ Set as Wallpaper
+          </button>
+          <button id="ai-save-library-btn" class="settings-btn settings-btn-secondary">
+            💾 Save to Library
+          </button>
+          <button id="ai-regenerate-btn" class="settings-btn settings-btn-ghost">
+            🔄 Regenerate
+          </button>
+        </div>
+      </div>
+
+      <!-- Provider Note -->
+      <div class="ai-provider-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="8" />
+          <line x1="12" y1="12" x2="12" y2="16" />
+        </svg>
+        Using <strong id="ai-provider-name">Pollinations.ai (Free)</strong> · No API key needed
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       3D WALLPAPER PANEL
+  ════════════════════════════════════════════ -->
+  <div id="panel-3d" class="glass-panel panel-3d hidden">
+    <div class="panel-header">
+      <h2 class="panel-title">🔷 3D Wallpapers</h2>
+      <button class="panel-close-btn" id="panel-3d-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="panel-3d-content">
+      <p class="panel-desc">Interactive 3D environments using WebGL. Move your mouse to control parallax.</p>
+
+      <!-- 3D Gallery Grid (populated by JS) -->
+      <div class="gallery-3d-grid" id="gallery-3d-grid"></div>
+
+      <!-- 3D Controls -->
+      <div class="threejs-controls" id="threejs-controls">
+        <div class="settings-row">
+          <label class="settings-label">Animation Speed</label>
+          <div class="slider-container">
+            <input type="range" id="anim-speed-slider" class="slider" min="0" max="3" value="1" step="0.1" />
+            <span class="slider-value" id="anim-speed-value">1.0×</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Mouse Interaction</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="interaction-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Current FPS</label>
+          <div class="fps-display" id="fps-display-3d">-- FPS</div>
+        </div>
+      </div>
+
+      <!-- Battery Saver Warning -->
+      <div id="battery-saver-notice" class="battery-saver-notice hidden">
+        ⚡ 3D wallpapers are disabled in Battery Saver mode.
+        Switch to Balanced or Ultra in <strong>Settings → Performance</strong>.
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       WIDGET PANEL
+  ════════════════════════════════════════════ -->
+  <div id="widgets-panel" class="glass-panel widgets-panel hidden">
+    <div class="panel-header">
+      <h2 class="panel-title">📦 Widget Manager</h2>
+      <button class="panel-close-btn" id="widgets-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <p class="panel-desc">Drag widgets to reposition them on the dashboard. Toggle visibility below.</p>
+    <div class="widget-list" id="widget-list-panel"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       BOOKMARK ADD MODAL
+  ════════════════════════════════════════════ -->
+  <div id="bookmark-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass-panel">
+      <h3 class="modal-title">Add Bookmark</h3>
+      <div class="modal-form">
+        <input type="text" id="bookmark-name-input" class="settings-input" placeholder="Name (e.g. GitHub)" />
+        <input type="url" id="bookmark-url-input" class="settings-input" placeholder="URL (e.g. https://github.com)" />
+        <div class="modal-buttons">
+          <button class="settings-btn" id="bookmark-save-btn">Add</button>
+          <button class="settings-btn settings-btn-ghost" id="bookmark-cancel-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       FOCUS MODE OVERLAY
+  ════════════════════════════════════════════ -->
+  <div id="focus-mode-hint" class="focus-hint hidden">
+    Press <kbd>F</kbd> to exit Focus Mode
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TOAST NOTIFICATIONS
+  ════════════════════════════════════════════ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  </div><!-- end #overlay-layer -->
+  </div><!-- end #app -->
+
+  <!-- ════════════════════════════════════════════
+       SCRIPTS — load order matters
+  ════════════════════════════════════════════ -->
+  <!-- 1. Engine layer -->
+  <script src="engine/storageManager.js"></script>
+  <script src="engine/performanceManager.js"></script>
+  <script src="engine/canvasRenderer.js"></script>
+  <script src="engine/videoRenderer.js"></script>
+  <script src="engine/wallpaperEngine.js"></script>
+  <script src="engine/widgetEngine.js"></script>
+  
+  <!-- 2. Widgets -->
+  <script src="components/clockWidget.js"></script>
+  <script src="components/weatherWidget.js"></script>
+  <script src="components/searchWidget.js"></script>
+  <script src="components/notesWidget.js"></script>
+  <script src="components/todoWidget.js"></script>
+  
+  <!-- 3. App layer -->
+  <script src="settings/settingsPanel.js"></script>
+  <script src="js/uiController.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>

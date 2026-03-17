@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LiveScape Pro</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            width: 300px;
+            font-family: 'Outfit', system-ui, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 2px;
+        }
+
+        .content {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            text-align: left;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(108, 99, 255, 0.4);
+            transform: translateX(2px);
+        }
+
+        .btn-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6c63ff, #4a42cc);
+            border-color: transparent;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #7d75ff, #5a52dc);
+        }
+
+        .divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+            margin: 4px 0;
+        }
+
+        .footer {
+            padding: 10px 16px 16px;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        .version {
+            color: rgba(108, 99, 255, 0.6);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">🌌</div>
+        <div class="title">LiveScape Pro</div>
+        <div class="subtitle">Ultimate Live Wallpaper Dashboard</div>
+    </div>
+
+    <div class="content">
+        <button class="btn btn-primary" id="btn-open-newtab">
+            <span class="btn-icon">🚀</span>
+            <div>
+                <div>Open New Tab</div>
+            </div>
+        </button>
+
+        <div class="divider"></div>
+
+        <button class="btn" id="btn-next">
+            <span class="btn-icon">▶️</span>
+            Next Wallpaper
+        </button>
+
+        <button class="btn" id="btn-shuffle">
+            <span class="btn-icon">🔀</span>
+            Shuffle Wallpaper
+        </button>
+
+        <div class="divider"></div>
+
+        <button class="btn" id="btn-settings">
+            <span class="btn-icon">⚙️</span>
+            Open Settings
+        </button>
+    </div>
+
+    <div class="footer">
+        LiveScape Pro <span class="version">v1.0.0</span>
+    </div>
+
+    <script>
+        document.getElementById('btn-open-newtab').addEventListener('click', () => {
+            chrome.tabs.create({ url: 'chrome://newtab' });
+            window.close();
+        });
+
+        document.getElementById('btn-next').addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'ROTATE_WALLPAPER' });
+                window.close();
+            });
+        });
+
+        document.getElementById('btn-shuffle').addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'SHUFFLE_WALLPAPER' });
+                window.close();
+            });
+        });
+
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            chrome.tabs.create({ url: 'chrome-extension://' + chrome.runtime.id + '/newtab.html' });
+            window.close();
+        });
+    </script>
+</body>
+
+</html>

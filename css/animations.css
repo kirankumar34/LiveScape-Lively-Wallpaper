@@ -1,0 +1,458 @@
+/* ═══════════════════════════════════════════════════════════
+   LiveScape Pro – animations.css
+   All animation keyframes and transition utilities
+═══════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ── */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes scaleOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes glowPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 15px var(--clr-accent-glow);
+    }
+
+    50% {
+        box-shadow: 0 0 35px var(--clr-accent-glow), 0 0 60px var(--clr-accent-glow);
+    }
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes wallpaperFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(1.04);
+        filter: brightness(0.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+        filter: brightness(1);
+    }
+}
+
+@keyframes particleDrift {
+    0% {
+        transform: translateY(0) translateX(0) scale(1);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: translateY(-30px) translateX(15px) scale(1.1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-60px) translateX(-10px) scale(0.8);
+        opacity: 0;
+    }
+}
+
+@keyframes clockSecond {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes widgetEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes badgePop {
+    0% {
+        transform: scale(0);
+    }
+
+    70% {
+        transform: scale(1.15);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes checkmark {
+    from {
+        stroke-dashoffset: 24;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes neonFlicker {
+
+    0%,
+    19%,
+    21%,
+    23%,
+    25%,
+    54%,
+    56%,
+    100% {
+        text-shadow: 0 0 10px var(--clr-accent), 0 0 20px var(--clr-accent), 0 0 40px var(--clr-accent);
+    }
+
+    20%,
+    24%,
+    55% {
+        text-shadow: none;
+    }
+}
+
+@keyframes aurora {
+    0% {
+        filter: hue-rotate(0deg) brightness(1);
+    }
+
+    50% {
+        filter: hue-rotate(180deg) brightness(1.2);
+    }
+
+    100% {
+        filter: hue-rotate(360deg) brightness(1);
+    }
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+@keyframes typing {
+    from {
+        width: 0;
+    }
+
+    to {
+        width: 100%;
+    }
+}
+
+@keyframes progressFill {
+    from {
+        width: 0%;
+    }
+
+    to {
+        width: var(--progress, 100%);
+    }
+}
+
+/* ── Entrance Animations for Panels ── */
+.gallery-panel:not(.hidden) {
+    animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.settings-panel:not(.hidden) {
+    animation: slideInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.widgets-panel:not(.hidden) {
+    animation: slideInLeft 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal:not(.hidden) {
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+    animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Widget Entrance ── */
+.widget {
+    animation: widgetEntrance 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.widget:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.widget:nth-child(2) {
+    animation-delay: 0.10s;
+}
+
+.widget:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.widget:nth-child(4) {
+    animation-delay: 0.20s;
+}
+
+.widget:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.widget:nth-child(6) {
+    animation-delay: 0.30s;
+}
+
+.widget:nth-child(7) {
+    animation-delay: 0.35s;
+}
+
+/* ── Shimmer Skeleton ── */
+.skeleton {
+    background: linear-gradient(90deg,
+            var(--clr-surface) 25%,
+            var(--clr-surface-hov) 50%,
+            var(--clr-surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+
+/* ── Wallpaper transition ── */
+.wallpaper-fade-in {
+    animation: wallpaperFadeIn 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ── Focus Mode transitions ── */
+body.focus-mode .widget:not(#widget-clock):not(#widget-search) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.4s ease;
+}
+
+body.focus-mode .toolbar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(100%);
+    transition: all 0.4s ease;
+}
+
+/* ── Hover ripple on buttons ── */
+.toolbar-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.toolbar-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    border-radius: inherit;
+    transition: opacity var(--transition-fast);
+}
+
+.toolbar-btn:active::after {
+    opacity: 0.08;
+}
+
+/* ── Glow on accent elements ── */
+.toolbar-btn-primary {
+    animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* ── Clock digit flip ── */
+.clock-time {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Todo check animation ── */
+.todo-check svg {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+}
+
+.todo-item.done .todo-check svg {
+    animation: checkmark 0.3s ease forwards;
+}
+
+/* ── Drag ghost ── */
+.widget.dragging {
+    opacity: 0.6;
+    transform: scale(1.03);
+    z-index: 1000;
+    overflow: visible;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 0 0 2px var(--clr-accent);
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+/* ── Quote fade swap ── */
+.quote-fade-out {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+.quote-fade-in {
+    animation: fadeIn 0.4s ease forwards;
+}
+
+/* ── Parallax container ── */
+#wallpaper-container {
+    transition: transform 0.08s linear;
+    will-change: transform;
+}
+
+/* ── Neon theme glow ── */
+[data-theme="neon"] .clock-time {
+    animation: neonFlicker 5s step-start infinite;
+}
+
+[data-theme="aurora"] #wallpaper-container {
+    animation: aurora 20s linear infinite;
+}
