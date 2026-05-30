@@ -24,11 +24,11 @@
   --clr-warning: #f59e0b;
   --clr-danger: #ef4444;
 
-  /* Glass (Optimized for low GPU usage) */
-  --glass-bg: rgba(12, 12, 28, 0.85); /* Darkened slightly to compensate for no blur */
-  --glass-blur: 0px; 
+  /* Glass (Premium visual design) */
+  --glass-bg: rgba(12, 12, 28, 0.55); 
+  --glass-blur: 16px; 
   --glass-border: 1px solid rgba(255, 255, 255, 0.12);
-  --glass-shadow: none;
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 
   /* Typography */
   --font-sans: 'Outfit', 'Inter', system-ui, sans-serif;
@@ -49,11 +49,11 @@
   --radius-xl: 28px;
   --radius-full: 9999px;
 
-  /* Transitions (Disabled for performance) */
-  --transition-fast: 0s;
-  --transition-base: 0s;
-  --transition-slow: 0s;
-  --transition-spring: 0s;
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  --transition-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* ── Theme Variants ── */
@@ -174,21 +174,30 @@ a {
   position: absolute;
   width: 100%;
   height: 100%;
-  object-fit: contain !important;
+  object-fit: cover;
   background-color: black;
   top: 0;
   left: 0;
 }
 
 #wallpaper-layer canvas,
-#wallpaper-layer div {
+#wallpaper-content {
   position: absolute;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   background-color: black;
   top: 0;
   left: 0;
+}
+
+#overlay-blur,
+#overlay-dim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 #overlay-layer {
@@ -905,10 +914,29 @@ a {
   top: 40px;
   left: 40px;
   width: 340px;
-  bottom: 80px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  --headerHeight: 140px;
+  --footerHeight: 120px;
+}
+
+#widgets-panel .panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.widget-manager-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: calc(100vh - var(--headerHeight) - var(--footerHeight));
+  max-height: calc(100vh - 140px);
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 
 .widget-list {
@@ -916,6 +944,21 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--sp-sm);
+}
+
+/* Custom scrollbar for Widget Manager */
+.widget-manager-content::-webkit-scrollbar {
+  width: 8px;
+}
+.widget-manager-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.widget-manager-content::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--clr-accent, #6c63ff) 75%, transparent);
+  border-radius: 999px;
+}
+.widget-manager-content::-webkit-scrollbar-thumb:hover {
+  background: var(--clr-accent, #6c63ff);
 }
 
 /* ── Modal ── */
@@ -1504,4 +1547,19 @@ a {
 
 .widget-icon {
   font-size: 18px;
+}
+
+/* ── Low performance overrides ── */
+html[data-perf-tier="low"],
+html[data-perf-tier="low"] * {
+  --transition-fast: 0s !important;
+  --transition-base: 0s !important;
+  --transition-slow: 0s !important;
+  --transition-spring: 0s !important;
+  --glass-blur: 0px !important;
+  --glass-shadow: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  animation: none !important;
 }

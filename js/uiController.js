@@ -116,7 +116,7 @@ const UIController = (() => {
         let previewHTML = '';
         if (wp.type === 'gradient') {
             previewHTML = `<div class="gallery-item-canvas" style="background:${wp.config.css}"></div>`;
-        } else if (wp.type === 'particles' || wp.type === 'webgl') {
+        } else if (wp.type === 'particles' || wp.type === 'webgl' || wp.type === 'canvas') {
             const preset = wp.config?.preset || 'stars';
             const bg     = previewGradients[preset] || 'linear-gradient(135deg,#0a0a0f,#1a1a2e)';
             const icon   = iconMap[preset] || '✨';
@@ -266,6 +266,106 @@ const UIController = (() => {
     }
 
     /* ─────────────────────────────────────────────────
+       RENDER DEBUG OVERLAY (Ctrl+Shift+D)
+       ───────────────────────────────────────────────── */
+    let debugOverlayInterval = null;
+
+    function toggleDebugOverlay() {
+        let panel = document.getElementById('render-debug-overlay');
+        if (panel) {
+            panel.remove();
+            if (debugOverlayInterval) {
+                clearInterval(debugOverlayInterval);
+                debugOverlayInterval = null;
+            }
+            toast('Debug overlay hidden', 'info');
+            return;
+        }
+
+        panel = document.createElement('div');
+        panel.id = 'render-debug-overlay';
+        panel.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 999999;
+            background: rgba(15, 23, 42, 0.95);
+            color: #f8fafc;
+            padding: 16px;
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            pointer-events: none;
+            width: 320px;
+        `;
+        document.body.appendChild(panel);
+
+        const updateDebug = () => {
+            const video = document.getElementById('wallpaper-video');
+            const img = document.getElementById('wp-media');
+            const canvas = document.getElementById('wp-canvas');
+            const overlayBlur = document.getElementById('overlay-blur');
+            const overlayDim = document.getElementById('overlay-dim');
+
+            let type = 'none';
+            let src = 'none';
+            let paused = 'n/a';
+            let readyState = 'n/a';
+            let resolution = 'n/a';
+            let opacity = 'n/a';
+            let zIndex = 'n/a';
+            let display = 'n/a';
+            let visibility = 'n/a';
+
+            let activeEl = null;
+            if (video) { type = 'video'; activeEl = video; paused = video.paused; readyState = video.readyState; resolution = `${video.videoWidth}x${video.videoHeight}`; }
+            else if (img) { type = 'img'; activeEl = img; src = img.src; resolution = `${img.naturalWidth}x${img.naturalHeight}`; }
+            else if (canvas) { type = 'canvas'; activeEl = canvas; resolution = `${canvas.width}x${canvas.height}`; }
+
+            if (activeEl) {
+                const styles = window.getComputedStyle(activeEl);
+                src = activeEl.src || activeEl.currentSrc || 'IndexedDB Blob / Stream';
+                opacity = styles.opacity;
+                zIndex = styles.zIndex;
+                display = styles.display;
+                visibility = styles.visibility;
+            }
+
+            const blurStyles = overlayBlur ? window.getComputedStyle(overlayBlur) : null;
+            const dimStyles = overlayDim ? window.getComputedStyle(overlayDim) : null;
+
+            panel.innerHTML = `
+                <div style="font-weight:bold;font-size:12px;margin-bottom:8px;color:#a78bfa;display:flex;justify-content:space-between;">
+                    <span>🔍 LIVESCAPE RENDER DEBUG</span>
+                </div>
+                <div><strong>Wallpaper Type:</strong> ${type}</div>
+                <div><strong>Current Source:</strong> <span style="word-break:break-all;color:#38bdf8;">${src.slice(0, 100)}${src.length > 100 ? '...' : ''}</span></div>
+                <div><strong>Resolution:</strong> ${resolution}</div>
+                <div><strong>Ready State:</strong> ${readyState}</div>
+                <div><strong>Paused State:</strong> ${paused}</div>
+                <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;"><strong>CSS Properties:</strong></div>
+                <div>- Display: ${display}</div>
+                <div>- Visibility: ${visibility}</div>
+                <div>- Opacity: ${opacity}</div>
+                <div>- Z-Index: ${zIndex}</div>
+                <div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;"><strong>Overlay Layers:</strong></div>
+                <div>- Blur bg-color: ${blurStyles ? blurStyles.backgroundColor : 'n/a'}</div>
+                <div>- Blur z-index: ${blurStyles ? blurStyles.zIndex : 'n/a'}</div>
+                <div>- Blur display: ${blurStyles ? blurStyles.display : 'n/a'}</div>
+                <div>- Dim bg-color: ${dimStyles ? dimStyles.backgroundColor : 'n/a'}</div>
+                <div>- Dim z-index: ${dimStyles ? dimStyles.zIndex : 'n/a'}</div>
+            `;
+        };
+
+        updateDebug();
+        debugOverlayInterval = setInterval(updateDebug, 500);
+        toast('Debug overlay enabled (Ctrl+Shift+D to close)', 'success');
+    }
+
+    /* ─────────────────────────────────────────────────
        PERFORMANCE MODE BUTTONS (Settings panel)
     ───────────────────────────────────────────────── */
     function setupPerformanceModeButtons() {
@@ -310,6 +410,11 @@ const UIController = (() => {
     ───────────────────────────────────────────────── */
     function setupKeyboard() {
         document.addEventListener('keydown', e => {
+            if (e.ctrlKey && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
+                toggleDebugOverlay();
+                return;
+            }
+
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
             switch (e.key) {
@@ -321,6 +426,14 @@ const UIController = (() => {
                     break;
                 case 's': case 'S':
                     togglePanel('settings-panel'); break;
+                case 'w': case 'W':
+                    togglePanel('widgets-panel'); break;
+                case 'h': case 'H':
+                    if (typeof WidgetEngine !== 'undefined') WidgetEngine.toggleGlobalVisibility();
+                    break;
+                case 'l': case 'L':
+                    if (typeof WidgetEngine !== 'undefined') WidgetEngine.toggleGlobalLock();
+                    break;
                 case 'ArrowRight':
                 case 'n': case 'N':
                     WallpaperEngine.nextWallpaper(); break;
@@ -388,11 +501,17 @@ const UIController = (() => {
             const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
 
             item.innerHTML = `
-                <img class="bookmark-favicon" src="${faviconUrl}" alt="${b.name}"
-                     onerror="this.style.display='none'" />
+                <img class="bookmark-favicon" src="${faviconUrl}" alt="${b.name}" />
                 <span class="bookmark-name">${b.name}</span>
                 <div class="bookmark-delete" title="Remove">×</div>
             `;
+
+            const img = item.querySelector('.bookmark-favicon');
+            if (img) {
+                img.addEventListener('error', () => {
+                    img.style.display = 'none';
+                });
+            }
 
             item.querySelector('.bookmark-delete').addEventListener('click', e => {
                 e.preventDefault(); e.stopPropagation();
@@ -408,41 +527,285 @@ const UIController = (() => {
     }
 
     /* ─────────────────────────────────────────────────
-       WIDGET PANEL LIST
+       WIDGET MANAGER PANEL v2 — Deep Customisation Cards
     ───────────────────────────────────────────────── */
     function buildWidgetPanel() {
-        const list = document.getElementById('widget-list-panel');
-        if (!list) return;
+        const container = document.getElementById('widget-list-panel');
+        if (!container) return;
+        container.innerHTML = '';
 
         const widgetMeta = [
-            { id: 'clock',     icon: '🕐', label: 'Clock' },
-            { id: 'search',    icon: '🔎', label: 'Search' },
-            { id: 'weather',   icon: '🌤️', label: 'Weather' },
-            { id: 'todo',      icon: '✅', label: 'Tasks' },
-            { id: 'notes',     icon: '📝', label: 'Notes' },
-            { id: 'bookmarks', icon: '🔖', label: 'Bookmarks' },
+            { id: 'clock',     icon: '🕐', label: 'Clock',     hasFont: true  },
+            { id: 'search',    icon: '🔎', label: 'Search',    hasFont: true  },
+            { id: 'weather',   icon: '🌤️', label: 'Weather',   hasFont: true  },
+            { id: 'todo',      icon: '✅', label: 'Tasks',     hasFont: false },
+            { id: 'notes',     icon: '📝', label: 'Notes',     hasFont: false },
+            { id: 'bookmarks', icon: '🔖', label: 'Bookmarks', hasFont: false },
+            { id: 'quote',     icon: '💬', label: 'Quote',     hasFont: false },
         ];
 
-        widgetMeta.forEach(meta => {
-            const item = document.createElement('div');
-            item.className = 'widget-list-item';
-            item.innerHTML = `
-                <div class="widget-list-item-info">
-                    <span class="widget-icon">${meta.icon}</span>
-                    <span>${meta.label}</span>
-                </div>
-                <label class="toggle-switch">
-                    <input type="checkbox" class="widget-toggle" data-widget="${meta.id}" checked />
-                    <span class="toggle-slider"></span>
-                </label>
-            `;
-            list.appendChild(item);
+        // Debounce helper for slider persistence
+        const _debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-            item.querySelector('.widget-toggle').addEventListener('change', function () {
-                WidgetEngine.setVisible(meta.id, this.checked);
+        widgetMeta.forEach(meta => {
+            const el = typeof WidgetEngine !== 'undefined' ? WidgetEngine.getWidgets()[meta.id] : null;
+            const cfg = (el && el._widgetConfig) || { visible: true, scale: 1.0, opacity: 1.0, borderRadius: 16, fontSize: 1.0, locked: false };
+
+            const card = document.createElement('div');
+            card.className = 'widget-card';
+            card.dataset.widgetCard = meta.id;
+
+            card.innerHTML = `
+                <div class="widget-card-header">
+                    <span class="widget-card-title">${meta.icon} ${meta.label}</span>
+                    <div class="widget-card-actions">
+                        <button class="widget-icon-btn ${cfg.visible ? '' : 'hidden-widget'}" id="wc-eye-${meta.id}" title="Toggle Visibility">
+                            ${cfg.visible ? _svgEyeOpen() : _svgEyeClosed()}
+                        </button>
+                        <button class="widget-icon-btn ${cfg.locked ? 'locked' : ''}" id="wc-lock-${meta.id}" title="Toggle Lock">
+                            ${cfg.locked ? _svgLocked() : _svgUnlocked()}
+                        </button>
+                    </div>
+                </div>
+                <div class="widget-slider-row">
+                    <label>Scale</label>
+                    <input type="range" id="wc-scale-${meta.id}" min="0.5" max="2.0" step="0.05" value="${cfg.scale}" />
+                    <span class="widget-slider-val" id="wc-scale-val-${meta.id}">${Math.round(cfg.scale * 100)}%</span>
+                </div>
+                <div class="widget-slider-row">
+                    <label>Opacity</label>
+                    <input type="range" id="wc-opacity-${meta.id}" min="0.1" max="1.0" step="0.05" value="${cfg.opacity}" />
+                    <span class="widget-slider-val" id="wc-opacity-val-${meta.id}">${Math.round(cfg.opacity * 100)}%</span>
+                </div>
+                <div class="widget-slider-row">
+                    <label>Radius</label>
+                    <input type="range" id="wc-radius-${meta.id}" min="0" max="32" step="1" value="${cfg.borderRadius}" />
+                    <span class="widget-slider-val" id="wc-radius-val-${meta.id}">${cfg.borderRadius}px</span>
+                </div>
+                ${meta.hasFont ? `
+                <div class="widget-slider-row">
+                    <label>Font</label>
+                    <input type="range" id="wc-font-${meta.id}" min="0.7" max="1.4" step="0.05" value="${cfg.fontSize}" />
+                    <span class="widget-slider-val" id="wc-font-val-${meta.id}">${cfg.fontSize.toFixed(2)}×</span>
+                </div>` : ''}
+                <div class="widget-color-row">
+                    <label>Colors</label>
+                    <div class="widget-color-picker-wrap">
+                        <span title="Background Color" style="cursor:help;">🎨 BG</span>
+                        <input type="color" id="wc-bg-${meta.id}" class="widget-color-input" />
+                        <button class="widget-color-reset" id="wc-bg-clear-${meta.id}">Clear</button>
+                    </div>
+                    <div class="widget-color-picker-wrap">
+                        <span title="Text Color" style="cursor:help;">🔤 Text</span>
+                        <input type="color" id="wc-text-${meta.id}" class="widget-color-input" />
+                        <button class="widget-color-reset" id="wc-text-clear-${meta.id}">Clear</button>
+                    </div>
+                </div>
+                <button class="widget-reset-btn" id="wc-reset-${meta.id}">↺ Reset</button>
+            `;
+ 
+            container.appendChild(card);
+ 
+            const debouncedSave = _debounce(async (newCfg) => {
+                if (typeof WidgetEngine !== 'undefined') await WidgetEngine.saveConfig(meta.id, newCfg);
+            }, 300);
+ 
+            const getCurrentCfg = () => (el && el._widgetConfig) || { ...cfg };
+ 
+            // ── Eye Button ──
+            const eyeBtn = card.querySelector(`#wc-eye-${meta.id}`);
+            eyeBtn?.addEventListener('click', () => {
+                const c = getCurrentCfg();
+                const newVisible = !c.visible;
+                if (typeof WidgetEngine !== 'undefined') WidgetEngine.setVisible(meta.id, newVisible);
+                const newCfg = { ...c, visible: newVisible };
+                if (el) el._widgetConfig = newCfg;
+                eyeBtn.innerHTML = newVisible ? _svgEyeOpen() : _svgEyeClosed();
+                eyeBtn.classList.toggle('hidden-widget', !newVisible);
+                debouncedSave(newCfg);
+
+                if (meta.id === 'weather' && newVisible) {
+                    if (typeof WeatherWidget !== 'undefined' && typeof WeatherWidget.onWidgetEnabled === 'function') {
+                        WeatherWidget.onWidgetEnabled();
+                    }
+                }
+            });
+ 
+            // ── Lock Button ──
+            const lockBtn = card.querySelector(`#wc-lock-${meta.id}`);
+            lockBtn?.addEventListener('click', () => {
+                const c = getCurrentCfg();
+                const newLocked = !c.locked;
+                if (typeof WidgetEngine !== 'undefined') WidgetEngine.lockWidget(meta.id, newLocked);
+                lockBtn.innerHTML = newLocked ? _svgLocked() : _svgUnlocked();
+                lockBtn.classList.toggle('locked', newLocked);
+            });
+ 
+            // ── Scale Slider ──
+            const scaleSlider = card.querySelector(`#wc-scale-${meta.id}`);
+            const scaleVal    = card.querySelector(`#wc-scale-val-${meta.id}`);
+            scaleSlider?.addEventListener('input', () => {
+                const v = parseFloat(scaleSlider.value);
+                if (scaleVal) scaleVal.textContent = `${Math.round(v * 100)}%`;
+                const newCfg = { ...getCurrentCfg(), scale: v };
+                if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, newCfg);
+                debouncedSave(newCfg);
+            });
+ 
+            // ── Opacity Slider ──
+            const opacitySlider = card.querySelector(`#wc-opacity-${meta.id}`);
+            const opacityVal    = card.querySelector(`#wc-opacity-val-${meta.id}`);
+            opacitySlider?.addEventListener('input', () => {
+                const v = parseFloat(opacitySlider.value);
+                if (opacityVal) opacityVal.textContent = `${Math.round(v * 100)}%`;
+                const newCfg = { ...getCurrentCfg(), opacity: v };
+                if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, newCfg);
+                debouncedSave(newCfg);
+            });
+ 
+            // ── Radius Slider ──
+            const radiusSlider = card.querySelector(`#wc-radius-${meta.id}`);
+            const radiusVal    = card.querySelector(`#wc-radius-val-${meta.id}`);
+            radiusSlider?.addEventListener('input', () => {
+                const v = parseInt(radiusSlider.value);
+                if (radiusVal) radiusVal.textContent = `${v}px`;
+                const newCfg = { ...getCurrentCfg(), borderRadius: v };
+                if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, newCfg);
+                debouncedSave(newCfg);
+            });
+ 
+            // ── Font Slider (optional) ──
+            if (meta.hasFont) {
+                const fontSlider = card.querySelector(`#wc-font-${meta.id}`);
+                const fontVal    = card.querySelector(`#wc-font-val-${meta.id}`);
+                fontSlider?.addEventListener('input', () => {
+                    const v = parseFloat(fontSlider.value);
+                    if (fontVal) fontVal.textContent = `${v.toFixed(2)}×`;
+                    const newCfg = { ...getCurrentCfg(), fontSize: v };
+                    if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, newCfg);
+                    debouncedSave(newCfg);
+                });
+            }
+
+            // ── Color Pickers ──
+            const bgPicker = card.querySelector(`#wc-bg-${meta.id}`);
+            const bgClear  = card.querySelector(`#wc-bg-clear-${meta.id}`);
+            const textPicker = card.querySelector(`#wc-text-${meta.id}`);
+            const textClear  = card.querySelector(`#wc-text-clear-${meta.id}`);
+
+            if (bgPicker) {
+                bgPicker.value = cfg.bgColor || '#1a1a2e';
+                bgPicker.addEventListener('input', () => {
+                    const newCfg = { ...getCurrentCfg(), bgColor: bgPicker.value };
+                    if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, newCfg);
+                    debouncedSave(newCfg);
+                });
+            }
+            bgClear?.addEventListener('click', () => {
+                const current = getCurrentCfg();
+                delete current.bgColor;
+                if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, current);
+                debouncedSave(current);
+                if (bgPicker) bgPicker.value = '#1a1a2e';
+            });
+
+            if (textPicker) {
+                textPicker.value = cfg.textColor || '#ffffff';
+                textPicker.addEventListener('input', () => {
+                    const newCfg = { ...getCurrentCfg(), textColor: textPicker.value };
+                    if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, newCfg);
+                    debouncedSave(newCfg);
+                });
+            }
+            textClear?.addEventListener('click', () => {
+                const current = getCurrentCfg();
+                delete current.textColor;
+                if (typeof WidgetEngine !== 'undefined') WidgetEngine.applyConfig(meta.id, current);
+                debouncedSave(current);
+                if (textPicker) textPicker.value = '#ffffff';
+            });
+ 
+            // ── Per-card Reset ──
+            const resetBtn = card.querySelector(`#wc-reset-${meta.id}`);
+            resetBtn?.addEventListener('click', async () => {
+                if (typeof WidgetEngine !== 'undefined') await WidgetEngine.resetConfig(meta.id);
+                if (scaleSlider) scaleSlider.value = '1';
+                if (scaleVal) scaleVal.textContent = '100%';
+                if (opacitySlider) opacitySlider.value = '1';
+                if (opacityVal) opacityVal.textContent = '100%';
+                if (radiusSlider) radiusSlider.value = '16';
+                if (radiusVal) radiusVal.textContent = '16px';
+                const fontSlider = card.querySelector(`#wc-font-${meta.id}`);
+                const fontVal    = card.querySelector(`#wc-font-val-${meta.id}`);
+                if (fontSlider) fontSlider.value = '1';
+                if (fontVal) fontVal.textContent = '1.00×';
+                if (bgPicker) bgPicker.value = '#1a1a2e';
+                if (textPicker) textPicker.value = '#ffffff';
+                toast(`${meta.label} reset to defaults`, 'info', 1500);
             });
         });
+
+        // ── Footer: Reset All, Export, Import ──
+        const footer = document.createElement('div');
+        footer.className = 'widget-panel-footer';
+        footer.innerHTML = `
+            <div class="widget-panel-footer-row">
+                <button class="settings-btn settings-btn-danger" id="wc-reset-all-btn">↺ Reset All Widgets</button>
+            </div>
+            <div class="widget-panel-footer-row">
+                <button class="settings-btn" id="wc-export-btn">📋 Export Layout</button>
+                <button class="settings-btn settings-btn-ghost" id="wc-import-btn">📥 Import Layout</button>
+            </div>
+        `;
+        const panel = document.getElementById('widgets-panel');
+        if (panel) {
+            panel.querySelector('.widget-panel-footer')?.remove();
+            panel.appendChild(footer);
+        }
+
+        document.getElementById('wc-reset-all-btn')?.addEventListener('click', async () => {
+            if (confirm('Reset all widget positions and configurations?')) {
+                if (typeof WidgetEngine !== 'undefined') {
+                    await WidgetEngine.resetAllConfigs();
+                    await StorageManager.set({ widgetLayout: {} });
+                }
+                toast('All widgets reset', 'success');
+                buildWidgetPanel();
+            }
+        });
+
+        document.getElementById('wc-export-btn')?.addEventListener('click', () => {
+            if (typeof WidgetEngine !== 'undefined') WidgetEngine.exportLayout();
+        });
+
+        document.getElementById('wc-import-btn')?.addEventListener('click', async () => {
+            const json = prompt('Paste exported layout JSON:');
+            if (json && typeof WidgetEngine !== 'undefined') {
+                await WidgetEngine.importLayout(json);
+                buildWidgetPanel();
+            }
+        });
     }
+
+    /* SVG helpers for widget card buttons */
+    function _svgEyeOpen() {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    }
+    function _svgEyeClosed() {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+    }
+    function _svgLocked() {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    }
+    function _svgUnlocked() {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
+    }
+
 
     /* ─────────────────────────────────────────────────
        WALLPAPER NAME INDICATOR (toolbar center)
@@ -466,7 +829,16 @@ const UIController = (() => {
             togglePanel('gallery-panel');
             if (!document.getElementById('gallery-panel').classList.contains('hidden')) buildGallery();
         });
-        document.getElementById('btn-widgets')?.addEventListener('click', () => togglePanel('widgets-panel'));
+        document.getElementById('btn-widgets')?.addEventListener('click', () => {
+            togglePanel('widgets-panel');
+            if (!document.getElementById('widgets-panel').classList.contains('hidden')) buildWidgetPanel();
+        });
+        document.getElementById('btn-scheduler')?.addEventListener('click', () => {
+            togglePanel('panel-scheduler');
+            if (!document.getElementById('panel-scheduler').classList.contains('hidden') && typeof SceneScheduler !== 'undefined') {
+                SceneScheduler.buildSchedulerPanel();
+            }
+        });
         document.getElementById('btn-next-wallpaper')?.addEventListener('click', () => WallpaperEngine.nextWallpaper());
         document.getElementById('btn-shuffle')?.addEventListener('click', () => WallpaperEngine.shuffleWallpaper());
         document.getElementById('btn-focus-mode')?.addEventListener('click', toggleFocusMode);
@@ -475,6 +847,27 @@ const UIController = (() => {
         document.getElementById('settings-close')?.addEventListener('click', () => closePanel('settings-panel'));
         document.getElementById('gallery-close')?.addEventListener('click', () => closePanel('gallery-panel'));
         document.getElementById('widgets-close')?.addEventListener('click', () => closePanel('widgets-panel'));
+        document.getElementById('panel-scheduler-close')?.addEventListener('click', () => closePanel('panel-scheduler'));
+
+        // Scheduler toggle & preview
+        document.getElementById('scheduler-toggle')?.addEventListener('change', function () {
+            if (this.checked) { SceneScheduler.enable(); } else { SceneScheduler.disable(); }
+        });
+        document.getElementById('scheduler-preview-btn')?.addEventListener('click', () => {
+            if (typeof SceneScheduler !== 'undefined') {
+                const scene = SceneScheduler.getActiveScene();
+                SceneScheduler.buildSchedulerPanel(); // refresh
+                toast(`Previewing ${scene.emoji} ${scene.label}`, 'info', 2000);
+            }
+        });
+
+        // Scheduler pill click
+        document.getElementById('scheduler-pill')?.addEventListener('click', () => {
+            togglePanel('panel-scheduler');
+            if (!document.getElementById('panel-scheduler').classList.contains('hidden') && typeof SceneScheduler !== 'undefined') {
+                SceneScheduler.buildSchedulerPanel();
+            }
+        });
 
         // Gallery tab filtering
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -486,15 +879,24 @@ const UIController = (() => {
         });
 
         buildWidgetPanel();
-        setupKeyboard();
-        setupUpload();
-        setupBookmarkModal();
-        setupPerformanceModeButtons();
-        _startFPSDisplay();
-        _initWallpaperIndicator();
 
-        // Load bookmarks
-        StorageManager.get('bookmarks').then(list => renderBookmarks(list || []));
+        const secondaryInit = () => {
+            setupKeyboard();
+            setupUpload();
+            setupBookmarkModal();
+            setupPerformanceModeButtons();
+            _startFPSDisplay();
+            _initWallpaperIndicator();
+
+            // Load bookmarks
+            StorageManager.get('bookmarks').then(list => renderBookmarks(list || []));
+        };
+
+        if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(secondaryInit);
+        } else {
+            setTimeout(secondaryInit, 1);
+        }
 
     }
 
@@ -506,7 +908,8 @@ const UIController = (() => {
         togglePanel,
         buildGallery,
         renderBookmarks,
-        toggleFocusMode
+        toggleFocusMode,
+        buildWidgetPanel
     };
 })();
 

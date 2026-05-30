@@ -13,9 +13,10 @@ const VideoRenderer = (() => {
     /* ───────────────────────────────────────────────────────
        INTERNAL STATE
     ─────────────────────────────────────────────────────── */
-    let _el          = null;  // <video> or <img> element
-    let _objectURL   = null;  // URL to revoke on destroy
-    let _type        = null;  // 'video' | 'gif' | 'image'
+    let _el            = null;  // <video> or <img> element
+    let _objectURL     = null;  // URL to revoke on destroy
+    let _type          = null;  // 'video' | 'gif' | 'image'
+    let _playOnGesture = null;  // gesture handler for autoplay fallback
 
     /* ───────────────────────────────────────────────────────
        LIFECYCLE
@@ -36,7 +37,7 @@ const VideoRenderer = (() => {
 
         const src     = _objectURL || options.src || '';
         const profile = PerformanceManager.getProfile();
-        const container = document.getElementById('wallpaper-layer');
+        const container = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
 
         if (!container) {
             return;
@@ -56,9 +57,23 @@ const VideoRenderer = (() => {
         // ── VIDEO ──
         _el               = document.createElement('video');
         _el.id            = 'wallpaper-video';
-        _el.src           = src;
-        _el.autoplay      = true;
-        _el.muted         = true;
+        
+        _el.onerror = async () => {
+            console.warn("Video failed to load source:", _el.src);
+            _el.onerror = null;
+            if (typeof UIController !== 'undefined') {
+                UIController.toast('Wallpaper source unavailable. Reverting to last valid wallpaper.', 'warning', 4000);
+            }
+            if (typeof WallpaperEngine !== 'undefined' && typeof WallpaperRecoveryManager !== 'undefined') {
+                const recoveryWp = await WallpaperRecoveryManager.recover();
+                WallpaperEngine.setWallpaper(recoveryWp);
+            }
+        };
+
+        // NOTE: muted is intentionally NOT set here.
+        // AudioEngine manages volume and mute state.
+        // We must start muted for autoplay policy, then AudioEngine unmutes after user gesture.
+        _el.muted         = true; // temporary until AudioEngine.resume() is called
         _el.loop          = true;
         _el.playsInline   = true;
         _el.preload       = 'metadata';
@@ -68,7 +83,6 @@ const VideoRenderer = (() => {
         _el.style.left = "0";
         _el.style.width = "100%";
         _el.style.height = "100%";
-        _el.style.zIndex = "-1";
 
         // Performance adaptations
         if (profile.tier === 'low') {
@@ -76,23 +90,46 @@ const VideoRenderer = (() => {
         }
         
         _el.onloadeddata = () => {
-            chrome.storage.local.get(["wallpaperFit"], (data) => {
-                const mode = data.wallpaperFit || "cover";
-                _el.style.setProperty('object-fit', mode, 'important');
+            StorageManager.get('wallpaperFit').then(mode => {
+                const fitMode = mode || "cover";
+                _el.style.setProperty('object-fit', fitMode, 'important');
             });
         };
 
+        // Assign src AFTER setting listeners to prevent caching race conditions
+        _el.src           = src;
+
         container.appendChild(_el);
 
-        // Force Autoplay with interaction catch
-        _el.muted = true;
+        // Attempt autoplay (must be muted initially for Chrome autoplay policy)
         _el.play().catch(() => {
-            document.addEventListener("click", () => _el.play(), { once: true });
+            _cleanupGesturePlay();
+            _playOnGesture = () => {
+                if (_el) _el.play().catch(() => {});
+                _cleanupGesturePlay();
+            };
+            document.addEventListener("click", _playOnGesture, { once: true });
+            document.addEventListener("keydown", _playOnGesture, { once: true });
+            document.addEventListener("touchstart", _playOnGesture, { once: true });
         });
+
+        // Notify AudioEngine that a video is now active (restores volume state)
+        if (typeof AudioEngine !== 'undefined') {
+            AudioEngine.resume();
+        }
 
         // Wire pause/resume to PerformanceManager signals
         PerformanceManager.on('pause',  _onPause);
         PerformanceManager.on('resume', _onResume);
+    }
+
+    function _cleanupGesturePlay() {
+        if (_playOnGesture) {
+            document.removeEventListener("click", _playOnGesture);
+            document.removeEventListener("keydown", _playOnGesture);
+            document.removeEventListener("touchstart", _playOnGesture);
+            _playOnGesture = null;
+        }
     }
 
     /** Release all resources: stop video, revoke URL, remove DOM node. */
@@ -100,6 +137,12 @@ const VideoRenderer = (() => {
         // Unregister PM callbacks
         PerformanceManager.off('pause',  _onPause);
         PerformanceManager.off('resume', _onResume);
+        _cleanupGesturePlay();
+
+        // Pause AudioEngine when video renderer is destroyed
+        if (typeof AudioEngine !== 'undefined') {
+            AudioEngine.pause();
+        }
 
         if (_el) {
             if (_el.tagName === 'VIDEO') {

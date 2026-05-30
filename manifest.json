@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "LiveScape – Live Wallpaper New Tab",
   "short_name": "LiveScape",
-  "version": "1.0.0",
-  "description": "Transform your Chrome new tab into a stunning live wallpaper. Permanent storage via IndexedDB, adaptive performance engine, and zero CPU waste.",
+  "version": "2.0.0",
+  "description": "Transform your Chrome new tab into a live wallpaper engine. v2: Audio, Deep Widget Customisation, Time-of-Day Scheduler.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
@@ -17,10 +17,9 @@
     "bookmarks"
   ],
   "host_permissions": [
-    "https://api.openweathermap.org/*",
-    "https://api.quotable.io/*",
     "https://fonts.googleapis.com/*",
-    "https://fonts.gstatic.com/*"
+    "https://fonts.gstatic.com/*",
+    "https://api.open-meteo.com/*"
   ],
   "icons": {
     "16": "assets/icons/icon16.png",
@@ -43,7 +42,9 @@
         "components/*",
         "js/*",
         "css/*",
-        "settings/*"
+        "settings/*",
+        "engine/audioEngine.js",
+        "engine/sceneScheduler.js"
       ],
       "matches": [
         "<all_urls>"

@@ -27,44 +27,58 @@
         WallpaperEngine.applyFitMode(settings.wallpaperFit || 'cover');
 
         // 5. Restore active wallpaper
-        await WallpaperEngine.restoreFromStorage();
+        await ErrorBoundaryManager.wrapAsync('WallpaperRestore', () => WallpaperEngine.restoreFromStorage());
+
+        // 5a. Init Audio Engine (connects to <video>, restores volume state)
+        if (typeof AudioEngine !== 'undefined') {
+            await ErrorBoundaryManager.wrapAsync('AudioEngine', () => AudioEngine.init());
+        }
 
         // 6. Init Widgets (if present)
         if (typeof ClockWidget !== 'undefined') {
-            ClockWidget.init({
-                style: settings.clock_style || 'digital',
-                use24h: settings.clock_24h || false,
+            ErrorBoundaryManager.wrap('ClockWidget', () => {
+                ClockWidget.init({
+                    style: settings.clock_style || 'digital',
+                    use24h: settings.clock_24h || false,
+                });
             });
         }
         if (typeof WeatherWidget !== 'undefined') {
-            WeatherWidget.init({
-                apiKey: settings.weather_api_key || '',
-                unit: settings.temp_unit || 'C',
+            ErrorBoundaryManager.wrap('WeatherWidget', () => {
+                WeatherWidget.init({
+                    apiKey: settings.weather_api_key || '',
+                    unit: settings.temp_unit || 'C',
+                });
             });
         }
-        if (typeof SearchWidget !== 'undefined') SearchWidget.init();
-        if (typeof NotesWidget !== 'undefined') NotesWidget.init();
-        if (typeof TodoWidget !== 'undefined') TodoWidget.init();
+        if (typeof SearchWidget !== 'undefined') {
+            ErrorBoundaryManager.wrap('SearchWidget', () => SearchWidget.init());
+        }
+        if (typeof NotesWidget !== 'undefined') {
+            ErrorBoundaryManager.wrap('NotesWidget', () => NotesWidget.init());
+        }
+        if (typeof TodoWidget !== 'undefined') {
+            ErrorBoundaryManager.wrap('TodoWidget', () => TodoWidget.init());
+        }
 
         // Widget Manager
         if (typeof WidgetEngine !== 'undefined') {
-            WidgetEngine.init();
-            const widgetData = settings.widgets || {};
-            Object.keys(widgetData).forEach(id => {
-                if (widgetData[id]?.visible === false) {
-                    WidgetEngine.setVisible(id, false);
-                }
-            });
+            await ErrorBoundaryManager.wrapAsync('WidgetEngine', () => WidgetEngine.init());
         }
 
         // 7. Init Settings Panel
         if (typeof SettingsPanel !== 'undefined') {
-            SettingsPanel.init(settings);
+            ErrorBoundaryManager.wrap('SettingsPanel', () => SettingsPanel.init(settings));
         }
 
         // 8. Init UI Controller
         if (typeof UIController !== 'undefined') {
-            UIController.init();
+            ErrorBoundaryManager.wrap('UIController', () => UIController.init());
+        }
+
+        // 9. Init Scene Scheduler (after all engines ready)
+        if (typeof SceneScheduler !== 'undefined') {
+            await SceneScheduler.init();
         }
 
         // 9. Auto-rotation setup
@@ -81,5 +95,11 @@
         });
 
     } catch (err) {
+        console.error("LiveScape Boot Error:", err);
+        // Expose to window.onerror so crash counter increments
+        window.dispatchEvent(new ErrorEvent('error', {
+            error: err,
+            message: err.message
+        }));
     }
 })();

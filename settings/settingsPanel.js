@@ -11,13 +11,22 @@ const SettingsPanel = (() => {
         setupWallpaperOptions(settings);
         setupWidgetToggles(settings);
         setupClockOptions(settings);
-        setupApiKey(settings);
         setupPerformance(settings);
         setupDataSection();
+        setupAudio(settings);
+        setupSchedulerSection();
     }
 
     /* ─── Appearance ─── */
     function setupAppearance(settings) {
+        const debounceTimers = {};
+        const debounceSet = (key, value, delay = 300) => {
+            clearTimeout(debounceTimers[key]);
+            debounceTimers[key] = setTimeout(() => {
+                StorageManager.set({ [key]: value }).catch(() => {});
+            }, delay);
+        };
+
         // Blur slider
         const blurSlider = document.getElementById('blur-slider');
         const blurValue = document.getElementById('blur-value');
@@ -32,7 +41,7 @@ const SettingsPanel = (() => {
                     overlay.style.backdropFilter = `blur(${v}px)`;
                     overlay.style.webkitBackdropFilter = `blur(${v}px)`;
                 }
-                StorageManager.set({ blur: parseFloat(v) });
+                debounceSet('blur', parseFloat(v));
             });
         }
 
@@ -47,7 +56,7 @@ const SettingsPanel = (() => {
                 dimValue.textContent = `${v}%`;
                 const overlay = document.getElementById('overlay-dim');
                 if (overlay) overlay.style.background = `rgba(0,0,0,${v / 100})`;
-                StorageManager.set({ dim: parseInt(v) });
+                debounceSet('dim', parseInt(v));
             });
         }
 
@@ -136,19 +145,13 @@ const SettingsPanel = (() => {
 
     /* ─── Widget Toggles ─── */
     function setupWidgetToggles(settings) {
-        const widgetData = settings.widgets || {};
-
-        document.querySelectorAll('.widget-toggle').forEach(toggle => {
-            const id = toggle.dataset.widget;
-            const visible = widgetData[id]?.visible !== false;
-            toggle.checked = visible;
-
-            toggle.addEventListener('change', () => {
-                WidgetManager.setVisible(id, toggle.checked);
-                // Sync widget panel toggles
-                document.querySelectorAll(`.widget-toggle[data-widget="${id}"]`)
-                    .forEach(t => { if (t !== toggle) t.checked = toggle.checked; });
-            });
+        const btn = document.getElementById('open-widget-manager-btn');
+        btn?.addEventListener('click', () => {
+            if (typeof UIController !== 'undefined') {
+                UIController.openPanel('widgets-panel');
+                UIController.closePanel('settings-panel');
+                UIController.buildWidgetPanel();
+            }
         });
     }
 
@@ -181,35 +184,10 @@ const SettingsPanel = (() => {
         });
     }
 
-    /* ─── API Key ─── */
-    function setupApiKey(settings) {
-        const keyInput = document.getElementById('weather-api-key');
-        const saveBtn = document.getElementById('save-api-key');
 
-        if (keyInput && settings.weather_api_key) {
-            keyInput.value = settings.weather_api_key;
-        }
-
-        saveBtn?.addEventListener('click', () => {
-            const key = keyInput?.value.trim();
-            if (!key) { UIController.toast('Please enter an API key', 'warning'); return; }
-            WeatherWidget.setApiKey(key);
-            UIController.toast('API key saved! Fetching weather…', 'success');
-        });
-    }
 
     /* ─── Performance ─── */
     function setupPerformance(settings) {
-        const qualitySelect = document.getElementById('quality-select');
-        if (qualitySelect) {
-            qualitySelect.value = settings.quality || 'auto';
-            qualitySelect.addEventListener('change', () => {
-                PerformanceManager.setQuality(qualitySelect.value);
-                StorageManager.set({ quality: qualitySelect.value });
-                UIController.toast(`Quality: ${qualitySelect.value}`, 'info');
-            });
-        }
-
         const pauseToggle = document.getElementById('pause-hidden-toggle');
         if (pauseToggle) {
             pauseToggle.checked = settings.pause_hidden !== false;
@@ -223,8 +201,7 @@ const SettingsPanel = (() => {
     function setupDataSection() {
         document.getElementById('reset-layout-btn')?.addEventListener('click', () => {
             if (confirm('Reset all widget positions to default?')) {
-                WidgetManager.resetLayout();
-                UIController.toast('Layout reset to default', 'success');
+                WidgetEngine.resetLayout();
             }
         });
 
@@ -244,6 +221,41 @@ const SettingsPanel = (() => {
 
     function toggleRowVisibility(row, visible) {
         if (row) row.style.display = visible ? 'flex' : 'none';
+    }
+
+    /* ─── Audio Section (v2) ─── */
+    /**
+     * Wire audio controls in the Settings panel to AudioEngine.
+     * @param {Object} settings - loaded settings object
+     */
+    function setupAudio(settings) {
+        if (typeof AudioEngine !== 'undefined') {
+            AudioEngine.setupSettingsControls(settings);
+        }
+    }
+
+    /* ─── Scheduler Section (v2) ─── */
+    /**
+     * Wire the scheduler enable toggle in the Settings panel.
+     */
+    function setupSchedulerSection() {
+        const openSchedulerBtn = document.getElementById('open-scheduler-btn');
+        openSchedulerBtn?.addEventListener('click', () => {
+            if (typeof UIController !== 'undefined') {
+                UIController.openPanel('panel-scheduler');
+                UIController.closePanel('settings-panel');
+            }
+        });
+
+        const settingsSchedulerToggle = document.getElementById('settings-scheduler-toggle');
+        if (settingsSchedulerToggle && typeof SceneScheduler !== 'undefined') {
+            const cfg = SceneScheduler.getConfig();
+            settingsSchedulerToggle.checked = cfg.enabled || false;
+            settingsSchedulerToggle.addEventListener('change', () => {
+                if (settingsSchedulerToggle.checked) SceneScheduler.enable();
+                else SceneScheduler.disable();
+            });
+        }
     }
 
     return { init };

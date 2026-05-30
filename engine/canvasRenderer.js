@@ -74,12 +74,17 @@ const CanvasRenderer = (() => {
         _canvas = document.createElement('canvas');
         _canvas.id = 'wp-canvas';
         _canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
-        document.getElementById('wallpaper-layer').appendChild(_canvas);
+        const container = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
+        if (container) container.appendChild(_canvas);
 
         _ctx = _canvas.getContext('2d', { alpha: false });
 
         _resize(profile.renderScale);
         window.addEventListener('resize', () => _resize(profile.renderScale));
+
+        if (typeof PerformanceManager !== 'undefined' && typeof PerformanceManager.initCanvasObserver === 'function') {
+            PerformanceManager.initCanvasObserver(_canvas);
+        }
 
         const count = profile.particleCount;
         _particles  = _buildParticles(_config.style, count, _w, _h, _config.color);
@@ -380,7 +385,8 @@ const CanvasRenderer = (() => {
         const el = document.createElement('div');
         el.id    = 'wp-plain-bg';
         el.style.cssText = `position:absolute;inset:0;background:${bg};`;
-        document.getElementById('wallpaper-layer').appendChild(el);
+        const container = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
+        if (container) container.appendChild(el);
     }
 
     /* ───────────────────────────────────────────────────────

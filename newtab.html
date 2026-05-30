@@ -13,6 +13,9 @@
   <link rel="stylesheet" href="css/main.css" />
   <link rel="stylesheet" href="css/animations.css" />
   <link rel="stylesheet" href="css/widgets.css" />
+  <link rel="stylesheet" href="css/audio.css" />
+  <link rel="stylesheet" href="css/scheduler.css" />
+  <link rel="stylesheet" href="css/widgets_v2.css" />
 </head>
 
 <body>
@@ -23,13 +26,28 @@
        WALLPAPER LAYER
   ════════════════════════════════════════════ -->
   <div id="wallpaper-layer">
-    <canvas id="particles-canvas"></canvas>
-    <canvas id="webgl-canvas"></canvas>
-    <video id="video-wallpaper" autoplay muted loop playsinline preload="metadata"></video>
-    <img id="gif-wallpaper" alt="Wallpaper" />
-    <div id="static-wallpaper"></div>
+    <div id="wallpaper-content" style="position:absolute;inset:0;"></div>
     <div id="overlay-blur"></div>
     <div id="overlay-dim"></div>
+    <!-- Audio HUD (v2) -->
+    <div id="audio-hud" class="audio-hud hidden">
+      <div class="audio-hud-header">
+        <div class="audio-hud-header-left">
+          <button id="audio-mute-btn" class="audio-btn" title="Toggle Mute">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          </button>
+          <span class="audio-hud-title">Volume</span>
+        </div>
+      </div>
+      <div class="audio-hud-body">
+        <input type="range" id="audio-volume-slider" class="audio-volume-slider"
+               min="0" max="100" value="50" step="1" />
+        <span id="audio-volume-label" class="audio-volume-label">50%</span>
+      </div>
+    </div>
   </div>
 
   <!-- ════════════════════════════════════════════
@@ -52,6 +70,7 @@
         <div id="clock-greeting" class="clock-greeting"></div>
       </div>
       <canvas id="analog-clock" class="analog-clock" width="180" height="180"></canvas>
+      <div class="widget-resize-handle"></div>
     </div>
 
     <!-- Search Widget -->
@@ -80,6 +99,7 @@
         </div>
         <div id="search-suggestions" class="search-suggestions hidden"></div>
       </div>
+      <div class="widget-resize-handle"></div>
     </div>
 
     <!-- Weather Widget -->
@@ -120,6 +140,7 @@
       <div class="weather-error hidden" id="weather-error">
         <span>⚠️ Set API key in settings</span>
       </div>
+      <div class="widget-resize-handle"></div>
     </div>
 
     <!-- Quote Widget -->
@@ -137,6 +158,7 @@
           </svg>
         </button>
       </div>
+      <div class="widget-resize-handle"></div>
     </div>
 
     <!-- To-Do Widget -->
@@ -164,6 +186,7 @@
       <div class="todo-footer">
         <button id="todo-clear-btn" class="todo-clear-btn">Clear done</button>
       </div>
+      <div class="widget-resize-handle"></div>
     </div>
 
     <!-- Notes Widget -->
@@ -181,6 +204,7 @@
       </div>
       <textarea id="notes-textarea" class="notes-textarea" placeholder="Start typing your notes here...
 Use this space for quick thoughts, ideas, or anything you want to remember..."></textarea>
+      <div class="widget-resize-handle"></div>
     </div>
 
     <!-- Bookmarks Widget -->
@@ -199,6 +223,7 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
         </svg>
         Add Bookmark
       </button>
+      <div class="widget-resize-handle"></div>
     </div>
 
   </div><!-- end #widget-layer -->
@@ -251,7 +276,7 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
         </svg>
         <span>Gallery</span>
       </button>
-      <button class="toolbar-btn" id="btn-widgets" title="Widgets">
+      <button class="toolbar-btn" id="btn-widgets" title="Widgets (W)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="7" height="7" />
           <rect x="14" y="3" width="7" height="7" />
@@ -259,6 +284,14 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
           <rect x="3" y="14" width="7" height="7" />
         </svg>
         <span>Widgets</span>
+      </button>
+      <!-- Scheduler button (v2) -->
+      <button class="toolbar-btn" id="btn-scheduler" title="Wallpaper Scheduler">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>Schedule</span>
       </button>
       <button class="toolbar-btn toolbar-btn-primary" id="btn-settings" title="Settings (S)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -421,6 +454,13 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
           <label class="settings-label">Live FPS</label>
           <span class="fps-display" id="fps-display">-- FPS</span>
         </div>
+        <div class="settings-row">
+          <label class="settings-label">Pause When Hidden</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="pause-hidden-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
         <div class="settings-row settings-col">
           <label class="settings-label">Performance Mode</label>
           <div class="perf-mode-selector">
@@ -451,42 +491,8 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
       <!-- Section: Widgets -->
       <div class="settings-section">
         <h3 class="settings-section-title">📦 Widgets</h3>
-        <div class="widget-toggles" id="widget-toggles">
-          <div class="settings-row">
-            <label class="settings-label">🕐 Clock</label>
-            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="clock"
-                checked /><span class="toggle-slider"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-label">🔎 Search</label>
-            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="search"
-                checked /><span class="toggle-slider"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-label">🌤️ Weather</label>
-            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="weather"
-                checked /><span class="toggle-slider"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-label">💬 Quote</label>
-            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="quote"
-                checked /><span class="toggle-slider"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-label">✅ Tasks</label>
-            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="todo" checked /><span
-                class="toggle-slider"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-label">📝 Notes</label>
-            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="notes"
-                checked /><span class="toggle-slider"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-label">🔖 Bookmarks</label>
-            <label class="toggle-switch"><input type="checkbox" class="widget-toggle" data-widget="bookmarks"
-                checked /><span class="toggle-slider"></span></label>
-          </div>
+        <div class="settings-row">
+          <button class="settings-btn" id="open-widget-manager-btn" style="width:100%; text-align:center;">📦 Open Widget Manager →</button>
         </div>
         <div class="settings-row">
           <label class="settings-label">Clock Style</label>
@@ -512,55 +518,7 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
         </div>
       </div>
 
-      <!-- Section: API Keys -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">🔑 API Keys</h3>
-        <div class="settings-row settings-col">
-          <label class="settings-label">OpenWeatherMap API Key</label>
-          <div class="api-input-row">
-            <input type="password" id="weather-api-key" class="settings-input"
-              placeholder="Enter your free API key..." />
-            <button id="save-api-key" class="settings-btn">Save</button>
-          </div>
-          <a href="https://openweathermap.org/api" target="_blank" class="settings-link">Get free API key →</a>
-        </div>
-      </div>
 
-      <!-- Section: Performance -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">⚡ Performance</h3>
-        <div class="settings-row">
-          <label class="settings-label">Performance Mode</label>
-          <div class="perf-mode-selector" id="perf-mode-selector">
-            <button class="perf-mode-btn" data-mode="ultra" title="Ultra – Full animations, 60 FPS">
-              <span class="perf-mode-icon">🚀</span>
-              <span class="perf-mode-label">Ultra</span>
-              <span class="perf-mode-desc">60 FPS · All effects</span>
-            </button>
-            <button class="perf-mode-btn active" data-mode="balanced" title="Balanced – 30 FPS">
-              <span class="perf-mode-icon">⚖️</span>
-              <span class="perf-mode-label">Balanced</span>
-              <span class="perf-mode-desc">30 FPS · Smart quality</span>
-            </button>
-            <button class="perf-mode-btn" data-mode="battery" title="Battery Saver – 20 FPS, no 3D">
-              <span class="perf-mode-icon">🔋</span>
-              <span class="perf-mode-label">Battery</span>
-              <span class="perf-mode-desc">20 FPS · No 3D/Shaders</span>
-            </button>
-          </div>
-        </div>
-        <div class="settings-row">
-          <label class="settings-label">Pause When Hidden</label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="pause-hidden-toggle" checked />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <div class="settings-row">
-          <label class="settings-label">FPS Monitor</label>
-          <div class="fps-display" id="fps-display">-- FPS</div>
-        </div>
-      </div>
 
       <!-- Section: AI Wallpaper Keys -->
       <div class="settings-section">
@@ -579,6 +537,46 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
             <input type="password" id="ai-api-key" class="settings-input" placeholder="Not required for Pollinations" />
             <button id="save-ai-key" class="settings-btn">Save</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Section: Audio (v2) -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">🔊 Audio</h3>
+        <div class="settings-row">
+          <label class="settings-label">Master Volume</label>
+          <div class="slider-container">
+            <input type="range" id="settings-volume-slider" class="slider" min="0" max="100" value="50" step="1" />
+          </div>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Mute</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-mute-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <label class="settings-label">Auto-mute in Battery Saver</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="audio-battery-saver-toggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Section: Scheduler (v2) -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">⏰ Scheduler</h3>
+        <div class="settings-row">
+          <label class="settings-label">Time-of-Day Auto Wallpaper</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-scheduler-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <button class="settings-btn" id="open-scheduler-btn">⏰ Open Scheduler Panel →</button>
         </div>
       </div>
 
@@ -745,8 +743,47 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
         </svg>
       </button>
     </div>
-    <p class="panel-desc">Drag widgets to reposition them on the dashboard. Toggle visibility below.</p>
-    <div class="widget-list" id="widget-list-panel"></div>
+    <p class="panel-desc">Customise each widget's scale, opacity, border radius, and font size. Drag widgets to reposition. Use <kbd>W</kbd> to open, <kbd>H</kbd> to hide all, <kbd>L</kbd> to lock all.</p>
+    <div class="widget-manager-content">
+      <div class="widget-list" id="widget-list-panel"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SCHEDULER PANEL (v2)
+  ════════════════════════════════════════════ -->
+  <div id="panel-scheduler" class="glass-panel panel-scheduler hidden">
+    <div class="panel-header">
+      <h2 class="panel-title">⏰ Wallpaper Scheduler</h2>
+      <button class="panel-close-btn" id="panel-scheduler-close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="scheduler-content">
+      <div class="scheduler-enable-row">
+        <span class="settings-label">Enable Time-of-Day Scheduling</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="scheduler-toggle" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <p class="panel-desc">Assign a wallpaper to each time window. LiveScape will transition automatically when the scene changes.</p>
+
+      <div id="scene-list" class="scene-list">
+        <!-- Populated by SceneScheduler.buildSchedulerPanel() -->
+      </div>
+    </div>
+
+    <div class="scheduler-footer">
+      <span id="scheduler-status" class="scheduler-status">Scheduler off</span>
+      <button id="scheduler-preview-btn" class="settings-btn settings-btn-ghost">
+        Preview Current Scene
+      </button>
+    </div>
   </div>
 
   <!-- ════════════════════════════════════════════
@@ -767,6 +804,11 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
     </div>
   </div>
 
+  <!-- Scheduler Active Pill (v2) -->
+  <div id="scheduler-pill" class="scheduler-pill hidden">
+    🕐 Auto
+  </div>
+
   <!-- ════════════════════════════════════════════
        FOCUS MODE OVERLAY
   ════════════════════════════════════════════ -->
@@ -785,11 +827,16 @@ Use this space for quick thoughts, ideas, or anything you want to remember..."><
   <!-- ════════════════════════════════════════════
        SCRIPTS — load order matters
   ════════════════════════════════════════════ -->
+  <!-- 0. Error boundary & Safe mode -->
+  <script src="js/errorBoundary.js"></script>
+
   <!-- 1. Engine layer -->
   <script src="engine/storageManager.js"></script>
   <script src="engine/performanceManager.js"></script>
   <script src="engine/canvasRenderer.js"></script>
   <script src="engine/videoRenderer.js"></script>
+  <script src="engine/audioEngine.js"></script>
+  <script src="engine/sceneScheduler.js"></script>
   <script src="engine/wallpaperEngine.js"></script>
   <script src="engine/widgetEngine.js"></script>
   

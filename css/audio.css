@@ -1,0 +1,153 @@
+/* ═══════════════════════════════════════════════════════════════
+   css/audio.css  v2.0.0
+   Audio HUD overlay styles for video wallpaper audio control.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Audio HUD Container ── */
+.audio-hud {
+  position: absolute;
+  bottom: 80px;
+  right: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 240px;
+  background: var(--glass-bg, rgba(12, 12, 28, 0.55));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 16px;
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.12));
+  box-shadow: var(--glass-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.37));
+  z-index: 100;
+  transition: opacity var(--transition-base, 0.3s ease), transform var(--transition-base, 0.3s ease);
+  pointer-events: auto; /* Essential to allow clicks/dragging inside #wallpaper-layer */
+}
+
+.audio-hud.fading {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+.audio-hud.hidden {
+  display: none;
+}
+
+.audio-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.audio-hud-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-hud-title {
+  color: var(--clr-text-primary, rgba(255, 255, 255, 0.95));
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.audio-hud-body {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+/* ── Mute Button ── */
+.audio-btn {
+  background: none;
+  border: none;
+  color: var(--clr-text-primary, #fff);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background var(--transition-fast, 0.15s ease), transform var(--transition-fast, 0.15s);
+  flex-shrink: 0;
+}
+
+.audio-btn:hover {
+  background: var(--clr-surface-hov, rgba(255, 255, 255, 0.12));
+  transform: scale(1.05);
+}
+
+.audio-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── Volume Slider ── */
+.audio-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  outline: none;
+  transition: background var(--transition-fast, 0.15s ease);
+}
+
+.audio-volume-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.audio-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #ffffff;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px; /* center thumb vertically on 6px track */
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.audio-volume-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.2);
+  background: var(--clr-accent, #6c63ff);
+}
+
+.audio-volume-slider::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+  background: var(--clr-accent, #6c63ff);
+}
+
+/* ── Volume Label ── */
+.audio-volume-label {
+  color: var(--clr-text-primary, #fff);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  min-width: 32px;
+  text-align: right;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+/* ── Settings panel audio section ── */
+.audio-settings-section {
+  padding: 0;
+}
+
+.audio-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}

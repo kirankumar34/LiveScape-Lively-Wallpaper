@@ -118,6 +118,29 @@ const TodoWidget = (() => {
     }
 
     /* ─── Quote of the Day ─── */
+    let localQuotes = [];
+
+    async function loadLocalQuotes() {
+        if (localQuotes.length > 0) return localQuotes;
+        try {
+            const res = await fetch('/assets/localQuotes.json');
+            localQuotes = await res.json();
+        } catch (err) {
+            console.warn("Failed to load /assets/localQuotes.json, using inline fallbacks:", err);
+            localQuotes = [
+                { text: "The best way to predict the future is to create it.", author: "Abraham Lincoln" },
+                { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
+                { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+                { text: "Life is what happens when you're busy making other plans.", author: "John Lennon" },
+                { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+                { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+                { text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
+                { text: "Whether you think you can or you think you can't, you're right.", author: "Henry Ford" }
+            ];
+        }
+        return localQuotes;
+    }
+
     function initQuote() {
         const quoteText = document.getElementById('quote-text');
         const quoteAuthor = document.getElementById('quote-author');
@@ -139,37 +162,27 @@ const TodoWidget = (() => {
     }
 
     async function fetchQuote(forceRefresh = false) {
-        const FALLBACK_QUOTES = [
-            { text: "The best way to predict the future is to create it.", author: "Abraham Lincoln" },
-            { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
-            { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
-            { text: "Life is what happens when you're busy making other plans.", author: "John Lennon" },
-            { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
-            { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
-            { text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
-            { text: "Whether you think you can or you think you can't, you're right.", author: "Henry Ford" },
-        ];
-
+        // Since api.quotable.io is permanently offline, we load from our local database directly
+        // to prevent 2-second connection timeouts and red console network errors.
         try {
-            const res = await fetch('https://api.quotable.io/random?maxLength=120');
-            const data = await res.json();
-            if (data && data.content) {
-                const quote = { text: data.content, author: data.author };
-                setQuoteWithAnimation(quote.text, quote.author);
-                if (!forceRefresh) {
-                    StorageManager.set({
-                        quote_cache: { text: quote.text, author: quote.author, date: new Date().toDateString() }
-                    });
-                }
-                return;
+            const quotes = await loadLocalQuotes();
+            const q = quotes[Math.floor(Math.random() * quotes.length)] || quotes[0];
+            setQuoteWithAnimation(q.text, q.author);
+            if (!forceRefresh) {
+                StorageManager.set({
+                    quote_cache: { text: q.text, author: q.author, date: new Date().toDateString() }
+                });
             }
         } catch (err) {
-            // Fallback
+            console.debug("Failed to load local quotes database:", err);
+            const fallbackQuotes = [
+                { text: "The best way to predict the future is to create it.", author: "Abraham Lincoln" },
+                { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
+                { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" }
+            ];
+            const q = fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
+            setQuoteWithAnimation(q.text, q.author);
         }
-
-        // Fallback random quote
-        const q = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
-        setQuoteWithAnimation(q.text, q.author);
     }
 
     function setQuote(text, author) {

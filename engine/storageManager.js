@@ -22,6 +22,8 @@ const StorageManager = (() => {
     const PREFIX = 'ls_';
     const _cache   = {};
     const _listeners = {};
+    let _writeQueue = Promise.resolve();
+    let _backupTimer = null;
 
     /* ═══════════════════════════════════════════════════════
        SECTION A: IndexedDB (blob storage)
@@ -161,16 +163,22 @@ const StorageManager = (() => {
             prefixed[PREFIX + k] = data[k];
             _cache[k] = data[k];
         });
-        return new Promise((resolve) => {
-            chrome.storage.local.set(prefixed, () => {
-                if (chrome.runtime.lastError) {
-                }
-                Object.keys(data).forEach(k => {
-                    (_listeners[k] || []).forEach(fn => fn(data[k]));
+        
+        _writeQueue = _writeQueue.then(() => {
+            return new Promise((resolve) => {
+                chrome.storage.local.set(prefixed, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error('Storage write error:', chrome.runtime.lastError);
+                    }
+                    Object.keys(data).forEach(k => {
+                        (_listeners[k] || []).forEach(fn => fn(data[k]));
+                    });
+                    resolve();
                 });
-                resolve();
             });
         });
+
+        return _writeQueue;
     }
 
     /** Remove keys from chrome.storage.local */
@@ -242,7 +250,9 @@ const StorageManager = (() => {
         // 2. Persist metadata in chrome.storage.local
         const meta = {
             id,
+            filename: file.name,
             type,
+            createdAt: Date.now(),
             mimeType,
             name:    file.name.replace(/\.[^.]+$/, '') || 'My Wallpaper',
             storage: 'indexeddb',
@@ -288,6 +298,10 @@ const StorageManager = (() => {
      * @param {string} id  — built-in ID or user-uploaded ID
      */
     async function setActiveWallpaper(id) {
+        if (typeof id === 'string' && id.startsWith('blob:')) {
+            console.warn('Block saving blob URL as active wallpaper ID:', id);
+            return;
+        }
         await set({ active_wallpaper_id: id });
     }
 
@@ -318,14 +332,60 @@ const StorageManager = (() => {
      * Bulk load all settings keys at startup.
      */
     async function loadSettings() {
-        return get([
-            'theme', 'blur', 'dim', 'parallax', 'particles_enabled',
-            'pause_on_hidden', 'clock_24h', 'clock_style', 'temp_unit',
-            'performance_mode', 'auto_rotation', 'rotation_interval',
-            'active_wallpaper_id', 'wallpaper_list',
-            'widgets', 'bookmarks', 'todos', 'notes',
-            'weather_api_key', 'initialized'
-        ]);
+        try {
+            const data = await get([
+                'theme', 'blur', 'dim', 'parallax', 'particles',
+                'pause_hidden', 'clock_24h', 'clock_style', 'temp_unit',
+                'performance_mode', 'auto_rotation', 'rotation_interval',
+                'active_wallpaper_id', 'wallpaper_list',
+                'widgets', 'bookmarks', 'todos', 'notes',
+                'weather_api_key', 'initialized'
+            ]);
+
+            if (!data.initialized) {
+                const backup = await getBackup();
+                if (backup && backup.initialized) {
+                    await restoreFromBackup(backup);
+                    return loadSettings();
+                }
+            } else {
+                _createBackup(data);
+            }
+            return data;
+        } catch (e) {
+            const backup = await getBackup();
+            if (backup) {
+                await restoreFromBackup(backup);
+                return backup;
+            }
+            throw e;
+        }
+    }
+
+    async function getBackup() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get('ls_settings_backup', (res) => {
+                resolve(res.ls_settings_backup || null);
+            });
+        });
+    }
+
+    function _createBackup(data) {
+        clearTimeout(_backupTimer);
+        _backupTimer = setTimeout(() => {
+            chrome.storage.local.set({ 'ls_settings_backup': data }, () => {});
+        }, 1000);
+    }
+
+    async function restoreFromBackup(backup) {
+        const prefixed = {};
+        Object.keys(backup).forEach(k => {
+            prefixed[PREFIX + k] = backup[k];
+            _cache[k] = backup[k];
+        });
+        return new Promise((resolve) => {
+            chrome.storage.local.set(prefixed, resolve);
+        });
     }
 
     /* ═══════════════════════════════════════════════════════

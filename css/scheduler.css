@@ -1,0 +1,329 @@
+/* ═══════════════════════════════════════════════════════════════
+   css/scheduler.css  v2.0.0
+   Time-of-Day Wallpaper Scheduler panel styles.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Scheduler Panel ── */
+.panel-scheduler {
+  position: fixed;
+  top: 40px;
+  right: 40px;
+  width: 400px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  --headerHeight: 80px;
+  --footerHeight: 80px;
+}
+
+#panel-scheduler .panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  flex-shrink: 0;
+}
+
+/* ── Scheduler Scrollable Content ── */
+.scheduler-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 160px);
+  padding: 0 var(--sp-xl) var(--sp-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* Custom scrollbar for Scheduler Panel */
+.scheduler-content::-webkit-scrollbar {
+  width: 8px;
+}
+.scheduler-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scheduler-content::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--clr-accent, #6c63ff) 75%, transparent);
+  border-radius: 999px;
+}
+.scheduler-content::-webkit-scrollbar-thumb:hover {
+  background: var(--clr-accent, #6c63ff);
+}
+
+.panel-scheduler .panel-desc {
+  padding: 0;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--clr-text-muted, rgba(255, 255, 255, 0.35));
+  line-height: 1.4;
+}
+
+/* ── Enable Row ── */
+.scheduler-enable-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Scene List ── */
+.scene-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* ── Scene Card ── */
+.scene-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+}
+
+.scene-card.active-scene {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.07);
+}
+
+.scene-card.active-scene::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.3);
+  pointer-events: none;
+}
+
+/* ── Scene Card Header ── */
+.scene-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 100%;
+}
+
+.scene-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--clr-text-primary, #fff);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.scene-card-time {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.50);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Active Badge ── */
+.scene-active-badge {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 100px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* ── Card Body & Form Control ── */
+.scene-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.scene-wallpaper-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.scene-wallpaper-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: left;
+}
+
+.scene-wallpaper-select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: var(--clr-text-primary, #fff);
+  font-size: 13px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  outline: none;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.scene-wallpaper-select:focus {
+  border-color: var(--clr-accent, #6c63ff);
+}
+
+.scene-wallpaper-select option {
+  background: #10101c;
+  color: #fff;
+}
+
+/* ── Scene Card Action Buttons ── */
+.scene-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+}
+
+.scene-btn {
+  flex: 1;
+  min-width: 80px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s, border-color 0.2s;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  text-align: center;
+  border: 1px solid transparent;
+}
+
+.scene-preview-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--clr-text-primary, #fff);
+}
+
+.scene-preview-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.scene-apply-btn {
+  background: var(--clr-accent, #6c63ff);
+  color: #fff;
+}
+
+.scene-apply-btn:hover {
+  background: color-mix(in srgb, var(--clr-accent, #6c63ff) 85%, white);
+}
+
+.scene-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Scheduler Footer ── */
+.scheduler-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px var(--sp-xl) var(--sp-xl);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.scheduler-status {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scheduler-status.active {
+  color: #a78bfa;
+}
+
+.scheduler-status.active::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #a78bfa;
+  border-radius: 50%;
+  display: inline-block;
+  animation: scheduler-pulse 2s ease-in-out infinite;
+}
+
+@keyframes scheduler-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Scheduler Active Pill ── */
+.scheduler-pill {
+  position: fixed;
+  bottom: 80px;
+  left: 20px;
+  background: rgba(167, 139, 250, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c4b5fd;
+  cursor: pointer;
+  z-index: 29;
+  transition: background 0.2s, transform 0.15s, opacity 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.scheduler-pill:hover {
+  background: rgba(167, 139, 250, 0.32);
+  transform: translateY(-1px);
+}
+
+.scheduler-pill.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Crossfade transition ── */
+#wallpaper-layer.scene-crossfade {
+  transition: opacity 0.8s ease;
+}

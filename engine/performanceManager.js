@@ -18,21 +18,21 @@ const PerformanceManager = (() => {
         low: {
             tier:              'low',
             label:             'Low-End',
-            targetFPS:         24,
-            frameInterval:     1000 / 24,   // ms between frames
+            targetFPS:         15,
+            frameInterval:     1000 / 15,   // ms between frames
             particleCount:     0,
             enableCanvas:      false,
             enableParallax:    false,
             enableWebGL:       false,
-            videoPlaybackRate: 0.9,
+            videoPlaybackRate: 0.8,
             renderScale:       0.75          // canvas resolution multiplier
         },
         medium: {
             tier:              'medium',
             label:             'Mid-Range',
-            targetFPS:         30,
-            frameInterval:     1000 / 30,
-            particleCount:     40,
+            targetFPS:         24,
+            frameInterval:     1000 / 24,
+            particleCount:     30,
             enableCanvas:      true,
             enableParallax:    false,
             enableWebGL:       false,
@@ -42,14 +42,14 @@ const PerformanceManager = (() => {
         high: {
             tier:              'high',
             label:             'High-End',
-            targetFPS:         60,
-            frameInterval:     1000 / 60,
-            particleCount:     80,
+            targetFPS:         30,
+            frameInterval:     1000 / 30,
+            particleCount:     60,
             enableCanvas:      true,
             enableParallax:    true,
             enableWebGL:       true,
             videoPlaybackRate: 1.0,
-            renderScale:       Math.min(window.devicePixelRatio || 1, 2)
+            renderScale:       Math.min(window.devicePixelRatio || 1, 1.5)
         }
     };
 
@@ -68,11 +68,15 @@ const PerformanceManager = (() => {
 
     // Adaptive degradation
     let _lowFPSStrikes  = 0;
-    const LOW_FPS_LIMIT  = 20;   // below this → consider downgrade
+    const LOW_FPS_LIMIT  = 12;   // below this → consider downgrade
     const STRIKE_LIMIT   = 5;    // consecutive checks before downgrade
 
     // Tab visibility
     let _isHidden = false;
+    let _isWindowFocused = true;
+    let _onBatterySaver = false;
+    let _isCanvasVisible = true;
+    let _canvasObserver = null;
 
     // Idle detection
     let _idleTimer   = null;
@@ -117,6 +121,64 @@ const PerformanceManager = (() => {
     }
 
     /* ───────────────────────────────────────────────────────
+       FOCUS & BATTERY SAVE & CANVAS VISIBILITY OBSERVATION
+    ─────────────────────────────────────────────────────── */
+
+    function _initFocusTracking() {
+        window.addEventListener('blur', () => {
+            _isWindowFocused = false;
+            _listeners.pause.forEach(fn => fn('blur'));
+        });
+        window.addEventListener('focus', () => {
+            _isWindowFocused = true;
+            if (!_isHidden && !_isIdle && _isCanvasVisible) {
+                _listeners.resume.forEach(fn => fn('focus'));
+            }
+        });
+    }
+
+    function _initBatterySaverCheck() {
+        if (navigator.getBattery) {
+            navigator.getBattery().then(battery => {
+                const checkBattery = () => {
+                    const isLowBatteryDischarging = !battery.charging && battery.level <= 0.20;
+                    if (isLowBatteryDischarging !== _onBatterySaver) {
+                        _onBatterySaver = isLowBatteryDischarging;
+                        if (_onBatterySaver) {
+                            applyTier('low'); // Force Battery Saver profile
+                            if (typeof AudioEngine !== 'undefined') AudioEngine.mute();
+                        } else {
+                            applyTier(_userOverride || _detectedTier);
+                        }
+                    }
+                };
+                checkBattery();
+                battery.addEventListener('levelchange', checkBattery);
+                battery.addEventListener('chargingchange', checkBattery);
+            });
+        }
+    }
+
+    function initCanvasObserver(canvasEl) {
+        if (typeof IntersectionObserver !== 'undefined' && canvasEl) {
+            if (_canvasObserver) _canvasObserver.disconnect();
+            _canvasObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    _isCanvasVisible = entry.isIntersecting;
+                    if (!_isCanvasVisible) {
+                        _listeners.pause.forEach(fn => fn('intersect'));
+                    } else {
+                        if (!_isHidden && !_isIdle && _isWindowFocused) {
+                            _listeners.resume.forEach(fn => fn('intersect'));
+                        }
+                    }
+                });
+            }, { threshold: 0.1 });
+            _canvasObserver.observe(canvasEl);
+        }
+    }
+
+    /* ───────────────────────────────────────────────────────
        INIT
     ─────────────────────────────────────────────────────── */
 
@@ -135,7 +197,8 @@ const PerformanceManager = (() => {
         _startFPSMonitor();
         _initVisibilityPausing();
         _initIdleDetection();
-
+        _initFocusTracking();
+        _initBatterySaverCheck();
     }
 
     /* ───────────────────────────────────────────────────────
@@ -147,6 +210,7 @@ const PerformanceManager = (() => {
         if (!PROFILES[tier]) return;
         const prev = _activeTier;
         _activeTier = tier;
+        document.documentElement.dataset.perfTier = tier;
         if (prev !== tier) {
             _listeners.tierChange.forEach(fn => fn(PROFILES[tier], PROFILES[prev]));
         }

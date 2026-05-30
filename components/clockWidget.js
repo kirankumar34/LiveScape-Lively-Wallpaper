@@ -98,9 +98,35 @@ const ClockWidget = (() => {
         }
     }
 
+    function getAlphaColor(color, alpha) {
+        if (color.startsWith('rgb')) {
+            const matches = color.match(/\d+/g);
+            if (matches && matches.length >= 3) {
+                return `rgba(${matches[0]}, ${matches[1]}, ${matches[2]}, ${alpha})`;
+            }
+        }
+        if (color.startsWith('#')) {
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        return color;
+    }
+
     function drawAnalog(now) {
         const canvas = document.getElementById('analog-clock');
         if (!canvas || canvas.style.display === 'none') return;
+
+        const clockEl = document.getElementById('widget-clock');
+        let baseColor = 'rgba(255,255,255,0.9)';
+        let accentColor = '#6c63ff';
+        if (clockEl) {
+            const computedStyle = window.getComputedStyle(clockEl);
+            baseColor = computedStyle.color || baseColor;
+            const accentVal = computedStyle.getPropertyValue('--clr-accent').trim();
+            if (accentVal) accentColor = accentVal;
+        }
 
         const ctx = canvas.getContext('2d');
         const cx = canvas.width / 2;
@@ -115,7 +141,7 @@ const ClockWidget = (() => {
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(10,10,30,0.6)';
         ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.strokeStyle = getAlphaColor(baseColor, 0.12);
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.restore();
@@ -129,7 +155,7 @@ const ClockWidget = (() => {
             ctx.beginPath();
             ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
             ctx.lineTo(cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR);
-            ctx.strokeStyle = i % 3 === 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)';
+            ctx.strokeStyle = i % 3 === 0 ? getAlphaColor(baseColor, 0.8) : getAlphaColor(baseColor, 0.3);
             ctx.lineWidth = i % 3 === 0 ? 2.5 : 1;
             ctx.stroke();
             ctx.restore();
@@ -142,26 +168,26 @@ const ClockWidget = (() => {
         // Hour hand
         drawHand(ctx, cx, cy,
             ((h + m / 60) / 12) * Math.PI * 2 - Math.PI / 2,
-            r * 0.52, 4, 'rgba(255,255,255,0.95)');
+            r * 0.52, 4, getAlphaColor(baseColor, 0.95));
 
         // Minute hand
         drawHand(ctx, cx, cy,
             ((m + s / 60) / 60) * Math.PI * 2 - Math.PI / 2,
-            r * 0.72, 2.5, 'rgba(255,255,255,0.9)');
+            r * 0.72, 2.5, getAlphaColor(baseColor, 0.9));
 
         // Second hand
         drawHand(ctx, cx, cy,
             (s / 60) * Math.PI * 2 - Math.PI / 2,
-            r * 0.82, 1.5, '#6c63ff');
+            r * 0.82, 1.5, accentColor);
 
         // Center dot
         ctx.beginPath();
         ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#6c63ff';
+        ctx.fillStyle = accentColor;
         ctx.fill();
         ctx.beginPath();
         ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = getAlphaColor(baseColor, 1.0);
         ctx.fill();
     }
 
@@ -179,7 +205,7 @@ const ClockWidget = (() => {
         ctx.strokeStyle = color;
         ctx.lineWidth = width;
         ctx.lineCap = 'round';
-        ctx.shadowBlur = color === '#6c63ff' ? 8 : 0;
+        ctx.shadowBlur = (color === '#6c63ff' || color === 'var(--clr-accent)') ? 8 : 0;
         ctx.shadowColor = color;
         ctx.stroke();
         ctx.restore();

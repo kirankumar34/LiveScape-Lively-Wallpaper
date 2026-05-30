@@ -15,6 +15,96 @@
    Custom (user-uploaded) wallpapers are loaded from IndexedDB.
 ═══════════════════════════════════════════════════════════════ */
 
+const WallpaperRecoveryManager = (() => {
+    const FALLBACK_WALLPAPER_ID = 'builtin-stars';
+
+    async function getLastValidId() {
+        try {
+            const id = await StorageManager.get('last_valid_wallpaper_id');
+            return id || FALLBACK_WALLPAPER_ID;
+        } catch (e) {
+            return FALLBACK_WALLPAPER_ID;
+        }
+    }
+
+    async function setLastValidId(id) {
+        if (id && !id.startsWith('blob:')) {
+            await StorageManager.set({ last_valid_wallpaper_id: id }).catch(() => {});
+        }
+    }
+
+    async function validateWallpaper(wallpaper) {
+        if (!wallpaper || !wallpaper.id) return false;
+
+        // Built-ins are always valid
+        if (wallpaper.id.startsWith('builtin-')) {
+            return true;
+        }
+
+        // Custom wallpapers must be in user list and exist in IndexedDB
+        if (wallpaper.id.startsWith('user_')) {
+            try {
+                const list = await StorageManager.getWallpaperList();
+                const meta = list.find(w => w.id === wallpaper.id);
+                if (!meta) return false;
+
+                const exists = await StorageManager.idbExists(wallpaper.id);
+                if (!exists) return false;
+
+                // Test-load URL to verify blob reconstruction
+                const url = await StorageManager.idbLoadURL(wallpaper.id);
+                if (!url) return false;
+
+                URL.revokeObjectURL(url);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    async function recover() {
+        const lastValidId = await getLastValidId();
+        let wallpaperToLoad = null;
+
+        if (lastValidId.startsWith('builtin-')) {
+            wallpaperToLoad = WallpaperEngine.findBuiltIn(lastValidId);
+        } else if (lastValidId.startsWith('user_')) {
+            const list = await StorageManager.getWallpaperList();
+            const meta = list.find(w => w.id === lastValidId);
+            if (meta) {
+                const isValid = await validateWallpaper(meta);
+                if (isValid) {
+                    wallpaperToLoad = {
+                        id:     meta.id,
+                        name:   meta.name,
+                        type:   meta.type,
+                        config: {}
+                    };
+                }
+            }
+        }
+
+        if (!wallpaperToLoad) {
+            wallpaperToLoad = WallpaperEngine.findBuiltIn(FALLBACK_WALLPAPER_ID) || WallpaperEngine.getLibrary()[0];
+        }
+
+        return wallpaperToLoad;
+    }
+
+    return {
+        getLastValidId,
+        setLastValidId,
+        validateWallpaper,
+        recover,
+        FALLBACK_WALLPAPER_ID
+    };
+})();
+
+window.WallpaperRecoveryManager = WallpaperRecoveryManager;
+
 const WallpaperEngine = (() => {
 
     /* ═══════════════════════════════════════════════════════
@@ -23,7 +113,7 @@ const WallpaperEngine = (() => {
     ═══════════════════════════════════════════════════════ */
     const LIBRARY = [
         // ── Default Video Fallback ──
-        { id: 'builtin-default-vid', name: 'Default Video', category: 'video', type: 'video', config: { src: 'assets/default.mp4' } },
+        { id: 'builtin-default-vid', name: 'Default Video', category: 'video', type: 'video', config: { src: 'https://player.vimeo.com/external/371433846.sd.mp4?s=236da2f3c022f73b441f710e206abfb58d20aa65&profile_id=139&oauth2_token_id=57447761' } },
         // ── Particle / Canvas ──
         { id: 'builtin-stars',   name: 'Stellar Field',   category: 'space',     type: 'canvas',    config: { preset: 'stars'   } },
         { id: 'builtin-aurora',  name: 'Aurora Borealis', category: 'nature',    type: 'canvas',    config: { preset: 'aurora'  } },
@@ -54,6 +144,71 @@ const WallpaperEngine = (() => {
     let _tgtX   = 0, _tgtY   = 0;
 
     const _listeners = { change: [], destroy: [] };
+
+    /* ═══════════════════════════════════════════════════════
+       WALLPAPER CACHE MANAGER & PRELOAD MANAGER
+    ═══════════════════════════════════════════════════════ */
+
+    const WallpaperCacheManager = (() => {
+        const _cache = new Map(); // id -> objectURL
+
+        async function getURL(id) {
+            if (_cache.has(id)) {
+                return _cache.get(id);
+            }
+            if (id && id.startsWith('user_')) {
+                const objectURL = await StorageManager.idbLoadURL(id).catch(() => null);
+                if (objectURL) {
+                    _cache.set(id, objectURL);
+                    return objectURL;
+                }
+            }
+            return null;
+        }
+
+        function release(id) {
+            const url = _cache.get(id);
+            if (url) {
+                URL.revokeObjectURL(url);
+                _cache.delete(id);
+            }
+        }
+
+        function releaseAll() {
+            for (const url of _cache.values()) {
+                URL.revokeObjectURL(url);
+            }
+            _cache.clear();
+        }
+
+        return { getURL, release, releaseAll };
+    })();
+
+    const PreloadManager = (() => {
+        function preloadVideo(src) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                video.muted = true;
+                video.preload = 'auto';
+                video.src = src;
+                video.oncanplaythrough = () => resolve(video);
+                video.onerror = () => resolve(null);
+                setTimeout(() => resolve(null), 3000);
+            });
+        }
+
+        function preloadImage(src) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = src;
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                setTimeout(() => resolve(null), 3000);
+            });
+        }
+
+        return { preloadVideo, preloadImage };
+    })();
 
     /* ═══════════════════════════════════════════════════════
        INIT
@@ -93,19 +248,58 @@ const WallpaperEngine = (() => {
      * @param {string}  [wallpaper.name]
      */
     async function setWallpaper(wallpaper) {
-        // Step 1: Destroy existing renderer
-        destroyWallpaper();
+        // Validate wallpaper before rendering
+        const isValid = await WallpaperRecoveryManager.validateWallpaper(wallpaper);
+        if (!isValid) {
+            console.warn(`Wallpaper validation failed for ID: ${wallpaper?.id}. Recovering last valid...`);
+            const recoveryWp = await WallpaperRecoveryManager.recover();
+            return setWallpaper(recoveryWp);
+        }
 
         _currentId   = wallpaper.id;
         _currentType = wallpaper.type;
 
         const profile = PerformanceManager.getProfile();
 
-        // Step 2: Set background colour immediately to avoid flash
-        const container = document.getElementById('wallpaper-layer');
+        // Determine background color based on preset or config to avoid flashes
+        let bgColor = '#020817';
+        if (wallpaper.type === 'canvas' && wallpaper.config?.preset) {
+            const presetName = wallpaper.config.preset;
+            if (CanvasRenderer.PRESETS[presetName]) {
+                bgColor = CanvasRenderer.PRESETS[presetName].bg;
+            }
+        } else if (wallpaper.type === 'gradient' && wallpaper.config?.css) {
+            bgColor = '#020817';
+        }
+
+        const layer = document.getElementById('wallpaper-layer');
+        if (layer) {
+            layer.style.background = bgColor;
+        }
+
+        const container = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
+
+        // Resolve IndexedDB objectURL if needed
+        let resolvedURL = wallpaper.objectURL || null;
+        if (!resolvedURL && wallpaper.id.startsWith('user_')) {
+            resolvedURL = await WallpaperCacheManager.getURL(wallpaper.id);
+        }
+
+        // Preload resources if applicable
+        const src = resolvedURL || wallpaper.config?.src;
+        if (src) {
+            if (wallpaper.type === 'video') {
+                await PreloadManager.preloadVideo(src);
+            } else if (wallpaper.type === 'image' || wallpaper.type === 'gif') {
+                await PreloadManager.preloadImage(src);
+            }
+        }
+
+        // Clean up previous wallpaper renderer
+        destroyWallpaper();
+
         if (container) {
-            container.innerHTML = ""; // Clean previous wallpaper
-            container.style.background = '#020817';
+            container.innerHTML = ""; // Clean previous wallpaper contents only (preserving overlays)
         }
 
         // Step 3: Start correct renderer
@@ -132,7 +326,7 @@ const WallpaperEngine = (() => {
             case 'image':
                 await VideoRenderer.start({
                     type:      wallpaper.type,
-                    objectURL: wallpaper.objectURL || null,
+                    objectURL: resolvedURL,
                     src:       wallpaper.config?.src || null
                 });
                 _activeRenderer = { type: 'video', instance: VideoRenderer };
@@ -144,13 +338,14 @@ const WallpaperEngine = (() => {
         }
 
         // Fade-in animation
-        _fadeIn(container);
+        _fadeIn(layer || container);
 
         // Persist selection
         await StorageManager.setActiveWallpaper(wallpaper.id);
+        await WallpaperRecoveryManager.setLastValidId(wallpaper.id);
 
         // Notify listeners
-        _listeners.change.forEach(fn => fn({ ...wallpaper }));
+        _listeners.change.forEach(fn => fn({ ...wallpaper, objectURL: resolvedURL }));
     }
 
     /* ═══════════════════════════════════════════════════════
@@ -204,9 +399,9 @@ const WallpaperEngine = (() => {
                 return;
             }
 
-            // User-uploaded wallpaper → load blob from IndexedDB
+            // User-uploaded wallpaper → load blob from IndexedDB via Cache
             if (activeId.startsWith('user_')) {
-                const objectURL = await StorageManager.idbLoadURL(activeId);
+                const objectURL = await WallpaperCacheManager.getURL(activeId);
                 if (!objectURL) {
                     setWallpaper(LIBRARY[0]);
                     return;
@@ -269,7 +464,8 @@ const WallpaperEngine = (() => {
         const el = document.createElement('div');
         el.id    = 'wp-gradient';
         el.style.cssText = `position:absolute;inset:0;background:${css};`;
-        document.getElementById('wallpaper-layer').appendChild(el);
+        const container = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
+        if (container) container.appendChild(el);
     }
 
     function _destroyGradient() {
@@ -283,9 +479,9 @@ const WallpaperEngine = (() => {
 
     function _fadeIn(container) {
         if (!container) return;
-        container.classList.remove('wp-fade-in');
+        container.classList.remove('wallpaper-fade-in');
         void container.offsetWidth; // reflow
-        container.classList.add('wp-fade-in');
+        container.classList.add('wallpaper-fade-in');
     }
 
     /* ═══════════════════════════════════════════════════════
@@ -306,7 +502,7 @@ const WallpaperEngine = (() => {
             _mouseX += (_tgtX - _mouseX) * 0.06;
             _mouseY += (_tgtY - _mouseY) * 0.06;
 
-            const c = document.getElementById('wallpaper-layer');
+            const c = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
             if (c) c.style.transform = `translate(${_mouseX * 0.5}px,${_mouseY * 0.5}px) scale(1.04)`;
         }
         _parallaxRafId = requestAnimationFrame(_parallaxLoop);
@@ -318,7 +514,7 @@ const WallpaperEngine = (() => {
     function setParallax(enabled) {
         _parallaxActive = enabled;
         if (!enabled) {
-            const c = document.getElementById('wallpaper-layer');
+            const c = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
             if (c) c.style.transform = '';
         }
     }
@@ -342,6 +538,9 @@ const WallpaperEngine = (() => {
     ═══════════════════════════════════════════════════════ */
 
     function setBlur(px = 0) {
+        if (typeof PerformanceManager !== 'undefined' && PerformanceManager.getTier() === 'low') {
+            px = 0;
+        }
         const el = document.getElementById('overlay-blur');
         if (el) {
             el.style.backdropFilter        = `blur(${px}px)`;
@@ -377,7 +576,7 @@ const WallpaperEngine = (() => {
     ═══════════════════════════════════════════════════════ */
 
     function applyFitMode(mode) {
-        const wallpapers = document.querySelectorAll('#wallpaper-layer video, #wallpaper-layer img, #wallpaper-layer canvas, #wallpaper-layer div:not(#overlay-blur):not(#overlay-dim)');
+        const wallpapers = document.querySelectorAll('#wallpaper-content video, #wallpaper-content img, #wallpaper-content canvas, #wallpaper-content div');
         
         if (!wallpapers.length) return;
         
