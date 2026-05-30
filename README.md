@@ -1,45 +1,315 @@
-# LiveScape – Live Wallpaper New Tab 🌌
+# 🌌 LiveScape Pro
 
-> Transform your Chrome new tab into a stunning, high-performance live wallpaper engine and productivity dashboard.
+<div align="center">
 
-LiveScape is a premium Chrome extension that replaces the default New Tab page with an adaptive, hardware-accelerated wallpaper environment. Designed with a strict focus on zero-CPU overhead, it leverages native HTML5 WebGL and Video compositor layers to handle high-resolution visual experiences smoothly across any hardware tier.
+### Transform Every New Tab Into a Living Workspace
 
-## ✨ Features
+A modern Chrome extension that combines **Live Wallpapers**, **Productivity Widgets**, **Smart Scheduling**, and **Beautiful Glassmorphism UI** into one immersive experience.
 
-- **Live Wallpapers:** Native, hardware-accelerated playback for videos, GIFs, and dynamic interactive WebGL canvas effects (particles, auroras).
-- **Pro Fit Modes:** Easily toggle wallpaper scale between `Contain` (Fit Screen), `Cover` (Fill Screen), or `Stretch` to adapt completely to any screen aspect ratio natively.
-- **Glassmorphism UI Layer:** Beautiful, modern glass-like dashboard with adjustable blur, darkening, and auto-dimming settings.
-- **Drag-and-Drop Widgets:** Fully customizable, percentage-based positional widget system avoiding CSS layout thrashing. Features Weather, Clock, Search, To-Do list, and Quotes.
-- **Persistent Local Engine:** Employs dual-layer storage leveraging `IndexedDB` for high-capacity media retention and `chrome.storage.local` for instant state-synchronization.
-- **Performance Manager:** Actively detects your hardware tier dynamically scaling rendering limits (capping framerates or downgrading playback rates) to keep your laptop battery safe and system snappy.
+---
 
-## 🚀 Installation (Developer Mode / Unpacked)
+🎥 Live Wallpapers • 🌤 Weather • ✅ Tasks • 📝 Notes • 🔍 Search • ⏰ Scheduler • ⚡ Optimized Performance
 
-1. Clone or download this repository to your local machine:
-   ```bash
-   git clone https://github.com/your-username/livescape-extension.git
-   ```
-2. Open Google Chrome and navigate to `chrome://extensions/`.
-3. Enable **"Developer mode"** in the top-right corner.
-4. Click **"Load unpacked"** and select the `/livescape-extension` repository directory.
-5. Open a new tab and enjoy your new dashboard!
+<br>
 
-## ⚙️ Tech Stack & Architecture
+**Built for people who open hundreds of tabs but still want beauty and productivity.**
 
-- **Core:** ES6+ Vanilla JavaScript, HTML5, CSS3 Grid/Flexbox
-- **APIs:** Chrome Extensions API V3 (`chrome.storage`, `chrome.alarms`), IndexedDB (`idb`), Native Canvas/WebGL, HTML5 Video hardware decoder.
-- **Architecture:** Strictly modular architecture separating concerns across `/engine` routines:
-  - `wallpaperEngine.js` – Central Orchestrator
-  - `widgetEngine.js` – Responsive Layout Manager
-  - `performanceManager.js` – Hardware detection and frame throttling
-  - `storageManager.js` – IndexedDB / API caching interface
+⭐ Star this repository if you like the project.
 
-## 🔮 Future Roadmap
+</div>
 
-- Additional WebGL shader routines (fluid simulation, real-time lighting).
-- Pomodoro tracker and timeline focus features.
-- System CPU/RAM overlay widget.
+---
 
-## 📄 License
+## ✨ Why LiveScape Pro?
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Most new tab extensions only change the background.
+
+LiveScape Pro transforms your browser into a personalized workspace.
+
+Imagine opening a new tab and seeing:
+
+* A live animated wallpaper
+* Your current tasks
+* Quick notes
+* Real-time weather
+* Inspirational quotes
+* Smart search
+* Wallpaper schedules based on time of day
+
+All inside a lightweight and customizable dashboard.
+
+---
+
+# 🚀 Features
+
+## 🎥 Live Wallpaper Engine
+
+Bring your browser to life.
+
+✔ Video Wallpapers
+
+✔ Animated Backgrounds
+
+✔ Custom Wallpaper Uploads
+
+✔ Auto Wallpaper Persistence
+
+✔ Time-Based Wallpaper Changes
+
+✔ Optimized Rendering Engine
+
+---
+
+## 🧩 Productivity Widgets
+
+### 🕒 Clock
+
+Beautiful digital clock with date and time.
+
+### 🌤 Weather
+
+Current weather information with temperature, humidity, wind speed, and visibility.
+
+### ✅ Tasks
+
+Stay organized with a simple task manager.
+
+### 📝 Notes
+
+Write quick notes directly from your new tab page.
+
+### 🔍 Search
+
+Search the web instantly.
+
+### 🔗 Quick Access
+
+Create your own personalized shortcuts.
+
+### 💬 Quotes
+
+Daily inspiration every time you open a new tab.
+
+---
+
+# ⏰ Smart Wallpaper Scheduler
+
+Automatically switch wallpapers throughout the day.
+
+| Time         | Scene     |
+| ------------ | --------- |
+| 🌅 Dawn      | Nature    |
+| ☀ Morning    | Aurora    |
+| 🌤 Afternoon | Ocean     |
+| 🌇 Evening   | Sunset    |
+| 🌙 Night     | Cyberpunk |
+
+No manual switching required.
+
+---
+
+# 🎨 Customize Everything
+
+LiveScape Pro gives complete control.
+
+### Widget Controls
+
+* Resize Widgets
+* Change Opacity
+* Adjust Border Radius
+* Lock Widgets
+* Show / Hide Widgets
+* Change Positions
+
+### Theme Controls
+
+* Dark Theme
+* Aurora Theme
+* Neon Theme
+
+### Wallpaper Controls
+
+* Cover
+* Contain
+* Auto Rotation
+* Performance Mode
+
+---
+
+# ⚡ Performance First
+
+Unlike many wallpaper extensions, LiveScape Pro is designed to be efficient.
+
+### Optimization Features
+
+✔ Dynamic FPS Control
+
+✔ GPU Usage Optimization
+
+✔ Memory Management
+
+✔ Smart Rendering
+
+✔ Background Pause Logic
+
+✔ Auto Device Detection
+
+Works on:
+
+* Low-End Laptops
+* Office PCs
+* Student Devices
+* Gaming Systems
+
+---
+
+# 🏗 Architecture
+
+```text
+LiveScape Pro
+│
+├── Wallpaper Engine
+├── Widget System
+├── Scheduler Engine
+├── Storage Manager
+├── Performance Manager
+├── Theme Manager
+└── Chrome Extension APIs
+```
+
+---
+
+# 📦 Installation
+
+### Clone Repository
+
+```bash
+git clone https://github.com/kirankumar34/LiveScape-Lively-Wallpaper.git
+```
+
+### Load Extension
+
+```text
+chrome://extensions
+```
+
+1. Enable Developer Mode
+2. Click Load Unpacked
+3. Select Project Folder
+4. Open a New Tab
+
+Done 🎉
+
+---
+
+# 📸 Preview
+
+### Dashboard
+
+Add your screenshot here
+
+```text
+screenshots/dashboard.png
+```
+
+### Widgets
+
+Add your screenshot here
+
+```text
+screenshots/widgets.png
+```
+
+### Scheduler
+
+Add your screenshot here
+
+```text
+screenshots/scheduler.png
+```
+
+---
+
+# 🔒 Privacy
+
+LiveScape Pro respects user privacy.
+
+### We DO NOT
+
+❌ Collect Personal Information
+
+❌ Track Browsing History
+
+❌ Sell User Data
+
+❌ Share Data with Third Parties
+
+### We ONLY Store
+
+✔ Wallpapers
+
+✔ Widget Preferences
+
+✔ Notes
+
+✔ Tasks
+
+Stored locally in the browser.
+
+---
+
+# 🛣 Roadmap
+
+### Version 3
+
+* [ ] Music Widget
+* [ ] Wallpaper Marketplace
+* [ ] Multi Layout System
+* [ ] Widget Presets
+* [ ] Cloud Sync
+* [ ] Advanced Themes
+
+### Future
+
+* [ ] Community Wallpapers
+* [ ] Wallpaper Packs
+* [ ] Widget Store
+* [ ] Plugin System
+
+---
+
+# 🤝 Contributing
+
+Contributions are always welcome.
+
+You can:
+
+* Report Bugs
+* Improve UI
+* Optimize Performance
+* Submit Pull Requests
+* Suggest Features
+
+---
+
+# ⭐ Support The Project
+
+If you found this project useful:
+
+⭐ Star the Repository
+
+🍴 Fork the Project
+
+📢 Share it with others
+
+---
+
+<div align="center">
+
+## 🌌 LiveScape Pro
+
+### Make Every New Tab Feel Alive.
+
+Built with ❤️ by Kiran Kumar
+
+</div>
