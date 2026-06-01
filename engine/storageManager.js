@@ -29,6 +29,8 @@ const StorageManager = (() => {
        SECTION A: IndexedDB (blob storage)
     ═══════════════════════════════════════════════════════ */
 
+    let _idbPromise = null;
+
     /**
      * Open (or create) the IndexedDB database.
      * Must be called before any IDB operation.
@@ -36,8 +38,9 @@ const StorageManager = (() => {
      */
     function openDB() {
         if (_idb) return Promise.resolve(_idb);
+        if (_idbPromise) return _idbPromise;
 
-        return new Promise((resolve, reject) => {
+        _idbPromise = new Promise((resolve, reject) => {
             const req = indexedDB.open(IDB_NAME, IDB_VERSION);
 
             req.onupgradeneeded = (e) => {
@@ -49,14 +52,18 @@ const StorageManager = (() => {
 
             req.onsuccess = (e) => {
                 _idb = e.target.result;
-                _idb.onerror = (ev) =>                _idb.onclose = ()  => { _idb = null; };
+                _idb.onerror = () => _idb.onclose = () => { _idb = null; };
+                _idbPromise = null;
                 resolve(_idb);
             };
 
             req.onerror = (e) => {
+                _idbPromise = null;
                 reject(e.target.error);
             };
         });
+
+        return _idbPromise;
     }
 
     /**
@@ -169,6 +176,9 @@ const StorageManager = (() => {
                 chrome.storage.local.set(prefixed, () => {
                     if (chrome.runtime.lastError) {
                         console.error('Storage write error:', chrome.runtime.lastError);
+                        if (typeof UIController !== 'undefined' && UIController.toast) {
+                            UIController.toast('Storage write failed: ' + chrome.runtime.lastError.message, 'error');
+                        }
                     }
                     Object.keys(data).forEach(k => {
                         (_listeners[k] || []).forEach(fn => fn(data[k]));
@@ -218,13 +228,15 @@ const StorageManager = (() => {
        SECTION C: High-level wallpaper helpers
     ═══════════════════════════════════════════════════════ */
 
+    let _saveQueue = Promise.resolve();
+
     /**
      * Save an uploaded File to IndexedDB and persist its metadata
      * to chrome.storage.local.
      *
      * Metadata shape:
      * {
-     *   id:        string,    // e.g. "user_1710000000000"
+     *   id:        string,    // e.g. "user_1710000000000_abc"
      *   type:      string,    // "video" | "gif" | "image"
      *   mimeType:  string,    // file.type
      *   name:      string,    // display name
@@ -237,39 +249,44 @@ const StorageManager = (() => {
      * @returns {Promise<Object>}  metadata object
      */
     async function saveWallpaper(file) {
-        const id       = 'user_' + Date.now();
-        const mimeType = file.type;
+        const promise = _saveQueue.then(async () => {
+            const id = 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+            const mimeType = file.type;
 
-        let type = 'image';
-        if (mimeType.startsWith('video/')) type = 'video';
-        if (mimeType === 'image/gif')       type = 'gif';
+            let type = 'image';
+            if (mimeType.startsWith('video/')) type = 'video';
+            if (mimeType === 'image/gif')       type = 'gif';
 
-        // 1. Store raw blob in IndexedDB
-        await idbSave(id, file, mimeType, file.name);
+            // 1. Store raw blob in IndexedDB
+            await idbSave(id, file, mimeType, file.name);
 
-        // 2. Persist metadata in chrome.storage.local
-        const meta = {
-            id,
-            filename: file.name,
-            type,
-            createdAt: Date.now(),
-            mimeType,
-            name:    file.name.replace(/\.[^.]+$/, '') || 'My Wallpaper',
-            storage: 'indexeddb',
-            active:  false,
-            addedAt: Date.now()
-        };
+            // 2. Persist metadata in chrome.storage.local
+            const meta = {
+                id,
+                filename: file.name,
+                type,
+                createdAt: Date.now(),
+                mimeType,
+                name:    file.name.replace(/\.[^.]+$/, '') || 'My Wallpaper',
+                storage: 'indexeddb',
+                active:  false,
+                addedAt: Date.now()
+            };
 
-        const list = await getWallpaperList();
-        list.push(meta);
-        // Hard cap at 30 custom wallpapers
-        while (list.length > 30) {
-            const removed = list.shift();
-            await idbDelete(removed.id).catch(() => {});
-        }
-        await set({ wallpaper_list: list });
+            const list = await getWallpaperList();
+            list.push(meta);
+            // Hard cap at 30 custom wallpapers
+            while (list.length > 30) {
+                const removed = list.shift();
+                await idbDelete(removed.id).catch(() => {});
+            }
+            await set({ wallpaper_list: list });
 
-        return meta;
+            return meta;
+        });
+
+        _saveQueue = promise.then(() => {}, () => {}); // keep queue moving on error
+        return promise;
     }
 
     /**
@@ -277,8 +294,18 @@ const StorageManager = (() => {
      * @returns {Promise<Object[]>}
      */
     async function getWallpaperList() {
-        return (await get('wallpaper_list')) || [];
+        const list = await get('wallpaper_list');
+        if (!Array.isArray(list)) return [];
+        return list.filter(m => {
+            if (!m || typeof m !== 'object') return false;
+            if (Object.prototype.hasOwnProperty.call(m, '__proto__') || 
+                Object.prototype.hasOwnProperty.call(m, 'constructor')) {
+                return false;
+            }
+            return typeof m.id === 'string';
+        });
     }
+
 
     /**
      * Delete a user wallpaper: removes blob from IDB and metadata from storage.

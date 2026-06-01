@@ -1,13 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════
    engine/performanceManager.js
    Responsibilities:
-     1. Detect device capability (low / medium / high)
+     1. Detect device capability (low / medium / high / ultra)
      2. Monitor live FPS
      3. Adaptive quality: auto-downgrade if FPS drops
-     4. Tab visibility pausing
+     4. Tab visibility & focus pausing
      5. Idle detection (pause after 60s inactivity)
+     6. Event loop lag (CPU) monitoring
+     7. Page Lifecycle API support (freeze/resume)
    Emits events via a simple listener system.
-═══════════════════════════════════════════════════════════════ */
+ ═══════════════════════════════════════════════════════════════ */
 
 const PerformanceManager = (() => {
 
@@ -17,9 +19,9 @@ const PerformanceManager = (() => {
     const PROFILES = {
         low: {
             tier:              'low',
-            label:             'Low-End',
-            targetFPS:         15,
-            frameInterval:     1000 / 15,   // ms between frames
+            label:             'Low Power',
+            targetFPS:         12,
+            frameInterval:     1000 / 12,   // ms between frames
             particleCount:     0,
             enableCanvas:      false,
             enableParallax:    false,
@@ -29,10 +31,10 @@ const PerformanceManager = (() => {
         },
         medium: {
             tier:              'medium',
-            label:             'Mid-Range',
+            label:             'Balanced',
             targetFPS:         24,
             frameInterval:     1000 / 24,
-            particleCount:     30,
+            particleCount:     15,
             enableCanvas:      true,
             enableParallax:    false,
             enableWebGL:       false,
@@ -41,15 +43,27 @@ const PerformanceManager = (() => {
         },
         high: {
             tier:              'high',
-            label:             'High-End',
+            label:             'High Performance',
             targetFPS:         30,
             frameInterval:     1000 / 30,
-            particleCount:     60,
+            particleCount:     30,
             enableCanvas:      true,
             enableParallax:    true,
             enableWebGL:       true,
             videoPlaybackRate: 1.0,
             renderScale:       Math.min(window.devicePixelRatio || 1, 1.5)
+        },
+        ultra: {
+            tier:              'ultra',
+            label:             'Ultra',
+            targetFPS:         30,
+            frameInterval:     1000 / 30,
+            particleCount:     50,
+            enableCanvas:      true,
+            enableParallax:    true,
+            enableWebGL:       true,
+            videoPlaybackRate: 1.0,
+            renderScale:       Math.min(window.devicePixelRatio || 1, 2.0)
         }
     };
 
@@ -58,7 +72,7 @@ const PerformanceManager = (() => {
     ─────────────────────────────────────────────────────── */
     let _detectedTier  = 'medium';  // from hardware
     let _activeTier    = 'medium';  // actual in use (may be overridden)
-    let _userOverride  = null;      // 'low' | 'medium' | 'high' | null
+    let _userOverride  = null;      // 'low' | 'medium' | 'high' | 'ultra' | null
 
     // FPS monitoring
     let _fpsFrameCount = 0;
@@ -68,15 +82,16 @@ const PerformanceManager = (() => {
 
     // Adaptive degradation
     let _lowFPSStrikes  = 0;
-    const LOW_FPS_LIMIT  = 12;   // below this → consider downgrade
+    const LOW_FPS_LIMIT  = 10;   // below this → consider downgrade (adjusted for 12fps base)
     const STRIKE_LIMIT   = 5;    // consecutive checks before downgrade
 
-    // Tab visibility
+    // Tab visibility & focus
     let _isHidden = false;
     let _isWindowFocused = true;
     let _onBatterySaver = false;
     let _isCanvasVisible = true;
     let _canvasObserver = null;
+    let _highCPUDdetected = false;
 
     // Idle detection
     let _idleTimer   = null;
@@ -96,32 +111,61 @@ const PerformanceManager = (() => {
     ─────────────────────────────────────────────────────── */
 
     /**
-     * Probe the hardware and return 'low' | 'medium' | 'high'.
-     * Uses CPU core count, reported device memory, and WebGL2
-     * availability as signals.
+       Probe hardware core count, device memory, and WebGL GPU details
+       to automatically pick the best performance mode.
      */
     function detectTier() {
-        const cores  = navigator.hardwareConcurrency || 2;
-        const memGB  = navigator.deviceMemory        || 2;  // Chrome only; undefined elsewhere
-        const px     = screen.width * screen.height;
+        const cores  = navigator.hardwareConcurrency || 4;
+        const memGB  = navigator.deviceMemory        || 4;  // Chrome only
 
-        // WebGL2 probe
+        // WebGL / GPU probe
         let hasWebGL2 = false;
+        let gpuRenderer = '';
         try {
-            const c = document.createElement('canvas');
-            hasWebGL2 = !!c.getContext('webgl2');
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+            if (gl) {
+                hasWebGL2 = true;
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    gpuRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+                }
+            }
         } catch (_) {}
 
-        const is4K    = px >= 3840 * 2160;
-        const isLowRes = px <= 1366 * 768;
+        const gpuLower = gpuRenderer.toLowerCase();
+        const isLowEndGPU = gpuLower.includes('uhd') || 
+                           gpuLower.includes('hd graphics') || 
+                           gpuLower.includes('intel') && !gpuLower.includes('iris') && !gpuLower.includes('arc') ||
+                           gpuLower.includes('mali') || 
+                           gpuLower.includes('qualcomm') ||
+                           gpuLower.includes('swiftshader') ||
+                           gpuLower.includes('software rasterizer');
 
-        if (cores <= 4 && memGB <= 4) return 'low';
-        if (cores >= 8 && memGB >= 8 && (hasWebGL2 || is4K)) return 'high';
+        const isHighEndGPU = gpuLower.includes('nvidia') || 
+                            gpuLower.includes('geforce') || 
+                            gpuLower.includes('radeon') || 
+                            gpuLower.includes('amd') || 
+                            gpuLower.includes('rtx') || 
+                            gpuLower.includes('gtx') || 
+                            gpuLower.includes('apple');
+
+        // Low Power: dual/quad core with 4GB RAM or less, OR a low-end integrated GPU
+        if ((cores <= 4 && memGB <= 4) || isLowEndGPU) {
+            return 'low';
+        }
+        
+        // High Performance: 8+ logical cores, 8GB+ RAM, and dedicated/high-end GPU
+        if (cores >= 8 && memGB >= 8 && hasWebGL2 && isHighEndGPU) {
+            return 'high';
+        }
+
+        // Balanced: Default mid-range fallback
         return 'medium';
     }
 
     /* ───────────────────────────────────────────────────────
-       FOCUS & BATTERY SAVE & CANVAS VISIBILITY OBSERVATION
+       FOCUS, BATTERY, CPU & LIFECYCLE TRACKING
     ─────────────────────────────────────────────────────── */
 
     function _initFocusTracking() {
@@ -131,7 +175,7 @@ const PerformanceManager = (() => {
         });
         window.addEventListener('focus', () => {
             _isWindowFocused = true;
-            if (!_isHidden && !_isIdle && _isCanvasVisible) {
+            if (shouldAnimate() && _isCanvasVisible) {
                 _listeners.resume.forEach(fn => fn('focus'));
             }
         });
@@ -146,9 +190,13 @@ const PerformanceManager = (() => {
                         _onBatterySaver = isLowBatteryDischarging;
                         if (_onBatterySaver) {
                             applyTier('low'); // Force Battery Saver profile
+                            _listeners.pause.forEach(fn => fn('battery'));
                             if (typeof AudioEngine !== 'undefined') AudioEngine.mute();
                         } else {
                             applyTier(_userOverride || _detectedTier);
+                            if (shouldAnimate()) {
+                                _listeners.resume.forEach(fn => fn('battery'));
+                            }
                         }
                     }
                 };
@@ -157,6 +205,52 @@ const PerformanceManager = (() => {
                 battery.addEventListener('chargingchange', checkBattery);
             });
         }
+    }
+
+    /**
+       CPU / Jank Monitor:
+       Measures event loop latency. If frame rendering ticks or timeouts are delayed
+       consistently (blocked > 200ms), we detect jank and temporarily pause wallpapers.
+     */
+    function _initCPUMonitor() {
+        let lastTime = performance.now();
+        const checkCpu = () => {
+            const now = performance.now();
+            const delta = now - lastTime;
+            lastTime = now;
+
+            if (delta > 200) {
+                if (!_highCPUDdetected) {
+                    _highCPUDdetected = true;
+                    _listeners.pause.forEach(fn => fn('cpu'));
+                }
+            } else {
+                if (_highCPUDdetected) {
+                    _highCPUDdetected = false;
+                    if (shouldAnimate() && _isCanvasVisible) {
+                        _listeners.resume.forEach(fn => fn('cpu'));
+                    }
+                }
+            }
+            setTimeout(checkCpu, 1000);
+        };
+        setTimeout(checkCpu, 1000);
+    }
+
+    /**
+       Page Lifecycle API:
+       Chrome suspends or freezes tabs in background to conserve resources.
+       Listen to freeze/resume events to halt execution immediately.
+     */
+    function _initLifecycleTracking() {
+        document.addEventListener('freeze', () => {
+            _listeners.pause.forEach(fn => fn('lifecycle-freeze'));
+        });
+        document.addEventListener('resume', () => {
+            if (shouldAnimate() && _isCanvasVisible) {
+                _listeners.resume.forEach(fn => fn('lifecycle-resume'));
+            }
+        });
     }
 
     function initCanvasObserver(canvasEl) {
@@ -168,7 +262,7 @@ const PerformanceManager = (() => {
                     if (!_isCanvasVisible) {
                         _listeners.pause.forEach(fn => fn('intersect'));
                     } else {
-                        if (!_isHidden && !_isIdle && _isWindowFocused) {
+                        if (shouldAnimate()) {
                             _listeners.resume.forEach(fn => fn('intersect'));
                         }
                     }
@@ -184,8 +278,7 @@ const PerformanceManager = (() => {
 
     /**
      * Initialise the performance manager.
-     * Call once at boot, after DOM is ready.
-     * @param {string|null} savedOverride  — from chrome.storage, e.g. 'low' | 'auto'
+     * @param {string|null} savedOverride  — from storage, e.g. 'low' | 'auto'
      */
     function init(savedOverride) {
         _detectedTier = detectTier();
@@ -199,6 +292,8 @@ const PerformanceManager = (() => {
         _initIdleDetection();
         _initFocusTracking();
         _initBatterySaverCheck();
+        _initCPUMonitor();
+        _initLifecycleTracking();
     }
 
     /* ───────────────────────────────────────────────────────
@@ -217,8 +312,8 @@ const PerformanceManager = (() => {
     }
 
     /**
-     * User or app override.
-     * @param {'auto'|'low'|'medium'|'high'} mode
+     * User override mode.
+     * @param {'auto'|'low'|'medium'|'high'|'ultra'} mode
      */
     function setMode(mode) {
         _userOverride = (mode === 'auto') ? null : mode;
@@ -242,6 +337,10 @@ const PerformanceManager = (() => {
         let frames  = 0;
 
         function tick(ts) {
+            if (!shouldAnimate()) {
+                _fpsRafId = null;
+                return;
+            }
             _fpsRafId = requestAnimationFrame(tick);
             frames++;
 
@@ -254,7 +353,27 @@ const PerformanceManager = (() => {
                 _checkAdaptive(_currentFPS);
             }
         }
-        _fpsRafId = requestAnimationFrame(tick);
+
+        if (shouldAnimate()) {
+            _fpsRafId = requestAnimationFrame(tick);
+        }
+
+        on('pause', () => {
+            if (_fpsRafId) {
+                cancelAnimationFrame(_fpsRafId);
+                _fpsRafId = null;
+            }
+            _currentFPS = 0;
+            _listeners.fpsUpdate.forEach(fn => fn(0));
+        });
+
+        on('resume', () => {
+            if (!_fpsRafId && shouldAnimate()) {
+                lastSec = performance.now();
+                frames = 0;
+                _fpsRafId = requestAnimationFrame(tick);
+            }
+        });
     }
 
     /**
@@ -262,14 +381,14 @@ const PerformanceManager = (() => {
      * Never auto-upgrades (prevents oscillation).
      */
     function _checkAdaptive(fps) {
-        // Don't downgrade if user pinned a mode
         if (_userOverride) return;
 
         if (fps < LOW_FPS_LIMIT) {
             _lowFPSStrikes++;
             if (_lowFPSStrikes >= STRIKE_LIMIT) {
                 _lowFPSStrikes = 0;
-                const downgrade = _activeTier === 'high' ? 'medium'
+                const downgrade = _activeTier === 'ultra' ? 'high'
+                                : _activeTier === 'high' ? 'medium'
                                 : _activeTier === 'medium' ? 'low'
                                 : null;
                 if (downgrade) {
@@ -294,7 +413,9 @@ const PerformanceManager = (() => {
             if (_isHidden) {
                 _listeners.pause.forEach(fn => fn('hidden'));
             } else {
-                if (!_isIdle) _listeners.resume.forEach(fn => fn('visible'));
+                if (shouldAnimate()) {
+                    _listeners.resume.forEach(fn => fn('visible'));
+                }
             }
         });
     }
@@ -311,7 +432,9 @@ const PerformanceManager = (() => {
             clearTimeout(_idleTimer);
             if (_isIdle) {
                 _isIdle = false;
-                if (!_isHidden) _listeners.resume.forEach(fn => fn('activity'));
+                if (shouldAnimate()) {
+                    _listeners.resume.forEach(fn => fn('activity'));
+                }
             }
             _idleTimer = setTimeout(_onIdle, IDLE_MS);
         };
@@ -320,7 +443,6 @@ const PerformanceManager = (() => {
             document.addEventListener(ev, resetIdle, { passive: true });
         });
 
-        // Start initial idle countdown
         _idleTimer = setTimeout(_onIdle, IDLE_MS);
     }
 
@@ -337,7 +459,7 @@ const PerformanceManager = (() => {
        Centralised check — call this before every RAF frame.
     ─────────────────────────────────────────────────────── */
     function shouldAnimate() {
-        return !_isHidden && !_isIdle;
+        return !_isHidden && !_isIdle && !_onBatterySaver && !_highCPUDdetected && _isWindowFocused;
     }
 
     /* ───────────────────────────────────────────────────────

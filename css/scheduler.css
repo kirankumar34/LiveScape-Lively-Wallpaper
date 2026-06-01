@@ -296,8 +296,8 @@
   bottom: 80px;
   left: 20px;
   background: rgba(167, 139, 250, 0.2);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(167, 139, 250, 0.35);
   border-radius: 100px;
   padding: 6px 14px;

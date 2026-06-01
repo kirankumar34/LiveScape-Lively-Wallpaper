@@ -16,7 +16,7 @@
         // 3. Init Performance Manager
         PerformanceManager.init(settings.performance_mode || 'auto');
         const profile = PerformanceManager.getProfile();
-        const tierLabels = { low: '🔋 Low-End', medium: '⚖️ Mid-Range', high: '🚀 High-End' };
+        const tierLabels = { low: '🔋 Low Power', medium: '⚖️ Balanced', high: '🚀 High Performance', ultra: '💎 Ultra' };
         const tierEl = document.getElementById('device-tier-label');
         if (tierEl) tierEl.textContent = tierLabels[profile.tier] || profile.tier;
 

@@ -18,10 +18,15 @@ const ClockWidget = (() => {
 
         // 11. TAB VISIBILITY OPTIMIZATION
         PerformanceManager.on('pause', () => {
-            if (tickRAF) clearTimeout(tickRAF);
+            if (tickRAF) {
+                clearTimeout(tickRAF);
+                tickRAF = null;
+            }
         });
         PerformanceManager.on('resume', () => {
-            tick();
+            if (!tickRAF) {
+                tick();
+            }
         });
 
     }
@@ -223,7 +228,10 @@ const ClockWidget = (() => {
     }
 
     function destroy() {
-        if (tickRAF) clearTimeout(tickRAF);
+        if (tickRAF) {
+            clearTimeout(tickRAF);
+            tickRAF = null;
+        }
     }
 
     return { init, setStyle, set24h, destroy };

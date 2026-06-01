@@ -564,16 +564,22 @@ const WidgetEngine = (() => {
         if (!el) return;
 
         // Read all current values first (batch read)
-        const scale   = config.scale   ?? DEFAULT_CONFIG.scale;
-        const opacity = config.opacity ?? DEFAULT_CONFIG.opacity;
-        const radius  = config.borderRadius ?? DEFAULT_CONFIG.borderRadius;
-        const font    = config.fontSize ?? DEFAULT_CONFIG.fontSize;
+        let scale   = config.scale   ?? DEFAULT_CONFIG.scale;
+        let opacity = config.opacity ?? DEFAULT_CONFIG.opacity;
+        let radius  = config.borderRadius ?? DEFAULT_CONFIG.borderRadius;
+        let font    = config.fontSize ?? DEFAULT_CONFIG.fontSize;
         const visible = config.visible  ?? DEFAULT_CONFIG.visible;
         const locked  = config.locked   ?? DEFAULT_CONFIG.locked;
         const bgColor = config.bgColor  ?? DEFAULT_CONFIG.bgColor;
         const textColor = config.textColor ?? DEFAULT_CONFIG.textColor;
         const width   = config.width   ?? DEFAULT_CONFIG.width;
         const height  = config.height  ?? DEFAULT_CONFIG.height;
+
+        // Validate and clamp NaN/Infinity values to default config
+        if (typeof scale !== 'number' || isNaN(scale) || !isFinite(scale)) scale = DEFAULT_CONFIG.scale;
+        if (typeof opacity !== 'number' || isNaN(opacity) || !isFinite(opacity)) opacity = DEFAULT_CONFIG.opacity;
+        if (typeof radius !== 'number' || isNaN(radius) || !isFinite(radius)) radius = DEFAULT_CONFIG.borderRadius;
+        if (typeof font !== 'number' || isNaN(font) || !isFinite(font)) font = DEFAULT_CONFIG.fontSize;
 
         // Convert hex to RGBA
         const hexToRgba = (hex, alpha) => {
@@ -642,6 +648,52 @@ const WidgetEngine = (() => {
 
         // Store config reference on element for drag guard
         el._widgetConfig = { ...config };
+    }
+
+    function savePosition(id) {
+        const el = widgets[id];
+        if (!el) return;
+        
+        let x = el.style.left;
+        let y = el.style.top;
+        
+        let pctX = 50;
+        let pctY = 50;
+        
+        if (typeof x === 'string' && x.endsWith('px')) {
+            const px = parseFloat(x);
+            pctX = (px / window.innerWidth) * 100;
+        } else if (typeof x === 'string' && x.endsWith('%')) {
+            pctX = parseFloat(x);
+        } else {
+            const rect = el.getBoundingClientRect();
+            pctX = (rect.left / window.innerWidth) * 100;
+        }
+        
+        if (typeof y === 'string' && y.endsWith('px')) {
+            const py = parseFloat(y);
+            pctY = (py / window.innerHeight) * 100;
+        } else if (typeof y === 'string' && y.endsWith('%')) {
+            pctY = parseFloat(y);
+        } else {
+            const rect = el.getBoundingClientRect();
+            pctY = (rect.top / window.innerHeight) * 100;
+        }
+        
+        // Clamp between 0 and 100
+        pctX = Math.max(0, Math.min(100, isNaN(pctX) ? 10 : pctX));
+        pctY = Math.max(0, Math.min(100, isNaN(pctY) ? 10 : pctY));
+        
+        el.style.left = pctX + '%';
+        el.style.top = pctY + '%';
+        
+        // Keep in px translation for active display
+        const x_px = (pctX / 100) * window.innerWidth;
+        const y_px = (pctY / 100) * window.innerHeight;
+        const config = el._widgetConfig || DEFAULT_CONFIG;
+        el.style.transform = `translate3d(${x_px}px, ${y_px}px, 0) scale(${config.scale})`;
+        
+        _savePosition(id, pctX, pctY);
     }
 
     /**
@@ -801,6 +853,7 @@ const WidgetEngine = (() => {
         resetConfig,
         resetAllConfigs,
         lockWidget,
+        savePosition,
         toggleGlobalVisibility,
         toggleGlobalLock,
         exportLayout,

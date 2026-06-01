@@ -9,6 +9,16 @@ const UIController = (() => {
     let focusMode  = false;
     let activePanel= null;
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     /* ─────────────────────────────────────────────────
        TOAST NOTIFICATION SYSTEM
     ───────────────────────────────────────────────── */
@@ -133,8 +143,8 @@ const UIController = (() => {
             ${previewHTML}
             <div class="gallery-item-overlay">
                 <div class="gallery-item-info">
-                    <span class="item-name">${wp.name}</span>
-                    <span class="item-category">${wp.category || 'custom'}</span>
+                    <span class="item-name">${escapeHtml(wp.name)}</span>
+                    <span class="item-category">${escapeHtml(wp.category || 'custom')}</span>
                 </div>
             </div>
             ${isActive ? '<div class="gallery-item-active-badge">✓</div>' : ''}
@@ -390,7 +400,14 @@ const UIController = (() => {
         syncButtons(saved);
 
         // Keep synced when tier changes externally
-        PerformanceManager.on('tierChange', (newProfile) => syncButtons(newProfile.tier));
+        PerformanceManager.on('tierChange', (newProfile) => {
+            syncButtons(newProfile.tier);
+            const tierEl = document.getElementById('device-tier-label');
+            if (tierEl) {
+                const tierLabels = { low: '🔋 Low Power', medium: '⚖️ Balanced', high: '🚀 High Performance', ultra: '💎 Ultra' };
+                tierEl.textContent = tierLabels[newProfile.tier] || newProfile.tier;
+            }
+        });
     }
 
     /* ─────────────────────────────────────────────────
@@ -401,7 +418,7 @@ const UIController = (() => {
         if (!fpsEl) return;
 
         PerformanceManager.on('fpsUpdate', (fps) => {
-            fpsEl.textContent = fps + ' FPS';
+            fpsEl.textContent = fps > 0 ? fps + ' FPS' : '-- FPS';
         });
     }
 
@@ -501,8 +518,8 @@ const UIController = (() => {
             const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
 
             item.innerHTML = `
-                <img class="bookmark-favicon" src="${faviconUrl}" alt="${b.name}" />
-                <span class="bookmark-name">${b.name}</span>
+                <img class="bookmark-favicon" src="${faviconUrl}" alt="${escapeHtml(b.name)}" />
+                <span class="bookmark-name">${escapeHtml(b.name)}</span>
                 <div class="bookmark-delete" title="Remove">×</div>
             `;
 

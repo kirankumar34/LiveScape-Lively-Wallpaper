@@ -26,7 +26,7 @@
 
   /* Glass (Premium visual design) */
   --glass-bg: rgba(12, 12, 28, 0.55); 
-  --glass-blur: 16px; 
+  --glass-blur: 8px; 
   --glass-border: 1px solid rgba(255, 255, 255, 0.12);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 
@@ -1021,7 +1021,7 @@ a {
   font-size: 14px;
   font-weight: 500;
   color: white;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   pointer-events: auto;
   transform: translateX(120%);
@@ -1060,7 +1060,7 @@ a {
   transform: translateX(-50%);
   z-index: 50;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
   color: rgba(255, 255, 255, 0.8);
   padding: 10px 20px;
   border-radius: var(--radius-full);
@@ -1479,9 +1479,14 @@ a {
    PERFORMANCE MODE SELECTOR
 ══════════════════════════════════════════════════════════ */
 .perf-mode-selector {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--sp-sm);
   width: 100%;
+}
+
+.perf-mode-selector button[data-mode="auto"] {
+  grid-column: span 2;
 }
 
 .perf-mode-btn {

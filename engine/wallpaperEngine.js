@@ -45,7 +45,7 @@ const WallpaperRecoveryManager = (() => {
         if (wallpaper.id.startsWith('user_')) {
             try {
                 const list = await StorageManager.getWallpaperList();
-                const meta = list.find(w => w.id === wallpaper.id);
+                const meta = list.find(w => w && w.id === wallpaper.id);
                 if (!meta) return false;
 
                 const exists = await StorageManager.idbExists(wallpaper.id);
@@ -73,7 +73,7 @@ const WallpaperRecoveryManager = (() => {
             wallpaperToLoad = WallpaperEngine.findBuiltIn(lastValidId);
         } else if (lastValidId.startsWith('user_')) {
             const list = await StorageManager.getWallpaperList();
-            const meta = list.find(w => w.id === lastValidId);
+            const meta = list.find(w => w && w.id === lastValidId);
             if (meta) {
                 const isValid = await validateWallpaper(meta);
                 if (isValid) {
@@ -142,6 +142,7 @@ const WallpaperEngine = (() => {
     let _parallaxRafId  = null;
     let _mouseX = 0, _mouseY = 0;
     let _tgtX   = 0, _tgtY   = 0;
+    let _setWallpaperSequence = 0;
 
     const _listeners = { change: [], destroy: [] };
 
@@ -256,6 +257,8 @@ const WallpaperEngine = (() => {
             return setWallpaper(recoveryWp);
         }
 
+        const seq = ++_setWallpaperSequence;
+
         _currentId   = wallpaper.id;
         _currentType = wallpaper.type;
 
@@ -285,6 +288,8 @@ const WallpaperEngine = (() => {
             resolvedURL = await WallpaperCacheManager.getURL(wallpaper.id);
         }
 
+        if (seq !== _setWallpaperSequence) return;
+
         // Preload resources if applicable
         const src = resolvedURL || wallpaper.config?.src;
         if (src) {
@@ -293,6 +298,13 @@ const WallpaperEngine = (() => {
             } else if (wallpaper.type === 'image' || wallpaper.type === 'gif') {
                 await PreloadManager.preloadImage(src);
             }
+        }
+
+        if (seq !== _setWallpaperSequence) {
+            if (resolvedURL && !wallpaper.objectURL) {
+                WallpaperCacheManager.release(wallpaper.id);
+            }
+            return;
         }
 
         // Clean up previous wallpaper renderer
@@ -335,6 +347,11 @@ const WallpaperEngine = (() => {
             default:
                 _renderGradient('linear-gradient(135deg,#020817,#0a1a2e)');
                 _activeRenderer = { type: 'gradient', instance: null };
+        }
+
+        if (seq !== _setWallpaperSequence) {
+            destroyWallpaper();
+            return;
         }
 
         // Fade-in animation
@@ -408,7 +425,7 @@ const WallpaperEngine = (() => {
                 }
 
                 const list  = await StorageManager.getWallpaperList();
-                const meta  = list.find(m => m.id === activeId) || { id: activeId, type: 'image', name: 'Custom' };
+                const meta  = list.find(m => m && m.id === activeId) || { id: activeId, type: 'image', name: 'Custom' };
 
                 setWallpaper({
                     id:        activeId,
@@ -490,32 +507,58 @@ const WallpaperEngine = (() => {
 
     function _initParallax() {
         document.addEventListener('mousemove', e => {
-            if (!_parallaxActive) return;
+            if (!_parallaxActive || !PerformanceManager.shouldAnimate()) return;
             _tgtX = (e.clientX / window.innerWidth  - 0.5) * 18;
             _tgtY = (e.clientY / window.innerHeight - 0.5) * 18;
         });
 
         function _parallaxLoop() {
+            if (!_parallaxActive || !PerformanceManager.shouldAnimate()) {
+                _parallaxRafId = null;
+                return;
+            }
             _parallaxRafId = requestAnimationFrame(_parallaxLoop);
-            if (!_parallaxActive) return;
 
             _mouseX += (_tgtX - _mouseX) * 0.06;
             _mouseY += (_tgtY - _mouseY) * 0.06;
 
             const c = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
-            if (c) c.style.transform = `translate(${_mouseX * 0.5}px,${_mouseY * 0.5}px) scale(1.04)`;
+            if (c) c.style.transform = `translate3d(${_mouseX * 0.5}px, ${_mouseY * 0.5}px, 0) scale(1.04)`;
         }
-        _parallaxRafId = requestAnimationFrame(_parallaxLoop);
 
         // Apply initial setting from performance profile
         setParallax(PerformanceManager.getProfile().enableParallax);
+
+        // Listen for pause/resume signals to start/stop the parallax loop dynamically
+        PerformanceManager.on('pause', () => {
+            if (_parallaxRafId) {
+                cancelAnimationFrame(_parallaxRafId);
+                _parallaxRafId = null;
+            }
+        });
+        PerformanceManager.on('resume', () => {
+            if (_parallaxActive && !_parallaxRafId && PerformanceManager.shouldAnimate()) {
+                _parallaxRafId = requestAnimationFrame(_parallaxLoop);
+            }
+        });
     }
 
     function setParallax(enabled) {
         _parallaxActive = enabled;
+        const c = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
         if (!enabled) {
-            const c = document.getElementById('wallpaper-content') || document.getElementById('wallpaper-layer');
             if (c) c.style.transform = '';
+            if (_parallaxRafId) {
+                cancelAnimationFrame(_parallaxRafId);
+                _parallaxRafId = null;
+            }
+        } else {
+            if (c) {
+                c.style.transform = `translate3d(${_mouseX * 0.5}px, ${_mouseY * 0.5}px, 0) scale(1.04)`;
+            }
+            if (!_parallaxRafId && PerformanceManager.shouldAnimate()) {
+                _parallaxRafId = requestAnimationFrame(_parallaxLoop);
+            }
         }
     }
 

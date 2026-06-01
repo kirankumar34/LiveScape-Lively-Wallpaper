@@ -18,6 +18,7 @@ const AudioEngine = (() => {
     let _audioCtxReady  = false; // true after first user gesture
     let _volume         = 0.5;   // 0.0 – 1.0
     let _muted          = false; // mute state
+    let _preMuteVolume  = 0.5;   // last non-zero volume
     let _hudVisible     = false; // whether HUD is currently shown
     let _hudTimer       = null;  // auto-hide timer
     let _saveTimer      = null;  // debounce timer for persistence
@@ -174,7 +175,14 @@ const AudioEngine = (() => {
      * @param {number} v – value between 0.0 and 1.0
      */
     function setVolume(v) {
-        _volume = Math.max(0, Math.min(1, v));
+        if (typeof v !== 'number' || isNaN(v)) return;
+        const val = Math.max(0, Math.min(1, v));
+        if (val > 0) {
+            _preMuteVolume = val;
+            _volume = val;
+        } else {
+            _volume = 0;
+        }
         _getActiveVideo();
         _applyToVideo();
         _updateHudLabel();
@@ -184,6 +192,9 @@ const AudioEngine = (() => {
 
     /** Mute audio without changing stored volume. */
     function mute() {
+        if (_volume > 0) {
+            _preMuteVolume = _volume;
+        }
         _muted = true;
         _getActiveVideo();
         _applyToVideo();
@@ -195,6 +206,9 @@ const AudioEngine = (() => {
     /** Restore audio from muted state. */
     function unmute() {
         _muted = false;
+        if (_volume === 0) {
+            _volume = _preMuteVolume || 0.5;
+        }
         _getActiveVideo();
         _applyToVideo();
         _updateMuteIcon();

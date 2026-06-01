@@ -403,7 +403,11 @@ body.focus-mode .toolbar {
 
 /* ── Glow on accent elements ── */
 .toolbar-btn-primary {
-    animation: glowPulse 3s ease-in-out infinite;
+    box-shadow: 0 4px 14px 0 var(--clr-accent-glow);
+    transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+.toolbar-btn-primary:hover {
+    box-shadow: 0 6px 20px 0 var(--clr-accent-glow);
 }
 
 /* ── Clock digit flip ── */
@@ -448,9 +452,9 @@ body.focus-mode .toolbar {
 
 /* ── Neon theme glow ── */
 [data-theme="neon"] .clock-time {
-    animation: neonFlicker 5s step-start infinite;
+    text-shadow: 0 0 10px var(--clr-accent), 0 0 20px var(--clr-accent);
 }
 
 [data-theme="aurora"] #wallpaper-container {
-    animation: aurora 20s linear infinite;
+    filter: hue-rotate(45deg);
 }

@@ -179,12 +179,33 @@ const WeatherWidget = (() => {
 
             fetchWeather();
 
-            // Check every 5 minutes; refetches when cache expires (30 minutes)
-            refreshInterval = setInterval(() => {
-                fetchWeather();
-            }, 5 * 60 * 1000);
+            // Setup visibility-aware interval
+            _setupWeatherTimer();
+            PerformanceManager.on('pause', _onPause);
+            PerformanceManager.on('resume', _onResume);
         } catch (err) {
             handleWeatherError(err);
+        }
+    }
+
+    function _setupWeatherTimer() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(() => {
+            fetchWeather();
+        }, 30 * 60 * 1000); // Poll strictly every 30 minutes
+    }
+
+    function _onPause() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+    }
+
+    function _onResume() {
+        if (!refreshInterval && PerformanceManager.shouldAnimate()) {
+            fetchWeather();
+            _setupWeatherTimer();
         }
     }
 
@@ -354,7 +375,12 @@ const WeatherWidget = (() => {
     }
 
     function destroy() {
-        if (refreshInterval) clearInterval(refreshInterval);
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+        PerformanceManager.off('pause', _onPause);
+        PerformanceManager.off('resume', _onResume);
     }
 
     return { init, setApiKey, setUnit, onWidgetEnabled, destroy };

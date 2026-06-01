@@ -78,11 +78,23 @@ const VideoRenderer = (() => {
         _el.playsInline   = true;
         _el.preload       = 'metadata';
 
+        // Limit decoding / frame buffer resolution to prevent 4K overhead
+        if (profile.tier === 'low') {
+            _el.width = 1280;
+            _el.height = 720;
+        } else {
+            _el.width = 1920;
+            _el.height = 1080;
+        }
+
         _el.style.position = "absolute";
         _el.style.top = "0";
         _el.style.left = "0";
         _el.style.width = "100%";
         _el.style.height = "100%";
+        
+        // Force Standard Dynamic Range (SDR) rendering on the video element to bypass HDR processing
+        _el.style.setProperty('dynamic-range-limit', 'standard', 'important');
 
         // Performance adaptations
         if (profile.tier === 'low') {
@@ -176,7 +188,7 @@ const VideoRenderer = (() => {
     }
 
     function _onResume() {
-        if (_el && _el.tagName === 'VIDEO' && _el.paused) {
+        if (_el && _el.tagName === 'VIDEO' && _el.paused && PerformanceManager.shouldAnimate()) {
             _el.play().catch(() => {});
         }
     }
